@@ -26,6 +26,8 @@ import { convertMarkdownToLatexBody } from "@/lib/markdown/markdown-to-latex";
 import { validateProject } from "@/lib/store/project-document";
 import { detectErrorType } from "@/lib/ai/prompts/repair-latex";
 import type { LogFields } from "@/lib/log";
+import { buildBlueprint } from "@/lib/document-blueprint/build-blueprint";
+import { assembleContext } from "@/lib/context-engineering/pipeline";
 
 export interface OrchestratorDeps {
   provider: LatexProvider;
@@ -238,21 +240,56 @@ export async function runDocument(
   const tpl = req.template ? getTemplate(req.template) : undefined;
   const templateRepairHints = tpl?.repairHints;
 
-  const initial = (
-    await generateWithTruncationRecovery(
-      deps.provider,
-      {
-        description: req.description,
-        docType: req.docType,
-        template: req.template,
-        sources: req.sources,
-        retrievedSources,
-        onChunk,
-      },
-      undefined,
-      deps.logger,
-    )
-  ).latex;
+  // Context Engineering (lib/context-engineering) — deterministic pipeline for the INITIAL generate.
+  // buildBlueprint is a deterministic (no-LLM) adapter; assembleContext returns null for templates
+  // without authored blocks, in which case the provider falls back to the legacy prompt path.
+  const baseGenerateInput: GenerateInput = {
+    description: req.description,
+    docType: req.docType,
+    template: req.template,
+    sources: req.sources,
+    retrievedSources,
+    onChunk,
+  };
+  const blueprint = buildBlueprint(baseGenerateInput);
+  const assembled = assembleContext({
+    blueprint,
+    description: req.description,
+    sources: req.sources,
+    retrievedSources,
+  });
+  if (assembled) {
+    // Flat, content-free trace (no description/topic/latex — those are redacted by lib/log anyway).
+    deps.logger?.("context.assembled", {
+      requestId: blueprint.requestId,
+      templateId: blueprint.templateId,
+      capabilities: blueprint.capabilities.join(","),
+      selectedBlockIds: assembled.trace.selectedBlocks.map((b) => b.id).join(","),
+      droppedBlockIds: assembled.trace.droppedBlocks
+        .map((d) => `${d.id}:${d.reason}`)
+        .join(","),
+      estimatedInputTokens: assembled.trace.estimatedInputTokens,
+    });
+  }
+
+  const initialOutcome = await generateWithTruncationRecovery(
+    deps.provider,
+    { ...baseGenerateInput, renderedPrompt: assembled?.rendered },
+    undefined,
+    deps.logger,
+  );
+
+  if (assembled) {
+    deps.logger?.("context.usage", {
+      requestId: blueprint.requestId,
+      finishReason: initialOutcome.finishReason,
+      inputTokens: initialOutcome.usage?.inputTokens,
+      outputTokens: initialOutcome.usage?.outputTokens,
+      totalTokens: initialOutcome.usage?.totalTokens,
+    });
+  }
+
+  const initial = initialOutcome.latex;
 
   onCompileStart?.();
 

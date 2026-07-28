@@ -53,12 +53,18 @@ export class VercelAiProvider implements LatexProvider {
     // mà KHÔNG cần đổi cấu hình chung (.env AI_MAX_TOKENS) — chỉ áp dụng cho lượt gọi này.
     const maxOutputTokens = input.maxTokensOverride ?? this.opts.maxTokens ?? 8192;
 
+    // Context Engine (lib/context-engineering) may pre-render {system,user}; otherwise fall back to
+    // the legacy SYSTEM_PROMPT + buildUserPrompt path. This provider is the ONLY place that maps a
+    // rendered prompt onto the SDK, so MockProvider and the orchestrator stay provider-agnostic.
+    const systemPrompt = input.renderedPrompt?.system ?? SYSTEM_PROMPT;
+    const userPrompt = input.renderedPrompt?.user ?? buildUserPrompt(input);
+
     try {
       if (input.onChunk) {
         const result = await streamText({
           model: this.model,
-          system: SYSTEM_PROMPT,
-          prompt: buildUserPrompt(input),
+          system: systemPrompt,
+          prompt: userPrompt,
           temperature: this.opts.temperature,
           maxOutputTokens,
           abortSignal: controller.signal,
@@ -86,8 +92,8 @@ export class VercelAiProvider implements LatexProvider {
       } else {
         const result = await generateText({
           model: this.model,
-          system: SYSTEM_PROMPT,
-          prompt: buildUserPrompt(input),
+          system: systemPrompt,
+          prompt: userPrompt,
           temperature: this.opts.temperature,
           maxOutputTokens,
           abortSignal: controller.signal,

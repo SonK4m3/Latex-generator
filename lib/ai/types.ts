@@ -26,6 +26,13 @@ export interface GenerateInput {
   templateRepairHints?: Array<{ errorPattern: string; action: string }>;
   /** Override maxOutputTokens cho lượt gọi này (dùng bởi truncation-recovery retry). */
   maxTokensOverride?: number;
+  /**
+   * Prompt đã render sẵn từ Context Engine (lib/context-engineering). Khi có, provider dùng
+   * nguyên {system,user} này THAY cho SYSTEM_PROMPT + buildUserPrompt(input). Kiểu trung tính
+   * {system,user} (KHÔNG phải ModelMessage của 'ai') để giữ LatexProvider provider-agnostic —
+   * MockProvider không cần biết tới nó. Vắng ⇒ đi đường prompt cũ (edit/repair/template chưa phủ).
+   */
+  renderedPrompt?: { system: string; user: string };
 }
 
 /**

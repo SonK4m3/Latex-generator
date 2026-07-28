@@ -218,6 +218,31 @@ Các đầu việc cụ thể được trích xuất từ [`project-roadmap.md`]
       với `compile-service` thật để đo Final compile success đúng nghĩa (PDF thật); tách
       `CapabilityAlternative[]` thành cấu trúc dữ liệu riêng khi cần thêm cho template khác.
 
+#### E6.1 · Context Engineering — Level 1 *(evolution của E6, thin slice: generate + template `math`)*
+>
+> 📄 Chi tiết đầy đủ (kiến trúc, decision ledger, DoD status): [`features/e6-prompt-engineering/context-engineering-l1.md`](./features/e6-prompt-engineering/context-engineering-l1.md)
+
+- [x] `DocumentBlueprint` + capability resolver xác định (keyword-map, không LLM; default = superset
+      khi không khớp keyword) — `lib/document-blueprint/`.
+- [x] Carve prompt `math` cũ thành 9 `ContextBlock` tĩnh có kiểu (global-contract / template /
+      constraint / capability / example / output-contract) + 2 block runtime (request/sources) —
+      `lib/context-engineering/blocks/`, `registry.ts`.
+- [x] Selector + precedence xác định (chọn theo template/capability/stage; sắp theo kind-group cứng,
+      priority là tiebreaker trong nhóm) — `lib/context-engineering/selectors/`, `precedence.ts`.
+- [x] Token budget (heuristic chars/4; cắt low→medium→high khi vượt, critical không bao giờ bị cắt,
+      throw nếu critical tự vượt) — `lib/context-engineering/budget/`.
+- [x] Renderer trung tính `{system,user}` (KHÔNG phải `ModelMessage` của SDK `ai`, giữ
+      `MockProvider` provider-agnostic) + context trace (block chọn/loại + lý do) —
+      `lib/context-engineering/renderer/`, `tracing/`.
+- [x] Tích hợp: field optional `GenerateInput.renderedPrompt?`; `VercelAiProvider` dùng khi có,
+      fallback `SYSTEM_PROMPT`+`buildUserPrompt` khi không; `runDocument` gọi engine cho lượt
+      generate ban đầu (chỉ `math`), log trace/usage (không log nội dung).
+- [x] Mở rộng `vitest.config.ts` `include` → thu thập test dưới `lib/**`; **25 test mới**, tất cả
+      pass; `npm test` toàn bộ 380 tests, không hồi quy (1 flake không liên quan, xem doc chi tiết).
+- [ ] ~~A/B eval thật (Variant A prompt cũ vs Variant B context engine, đo giảm token + compile-rate
+      qua Tectonic thật)~~ — **user chủ động bỏ khỏi phạm vi lần này**, không phải bị chặn kỹ thuật.
+      Xem § 9 của doc chi tiết để biết việc còn lại nếu cần đạt DoD đầy đủ sau này.
+
 #### E7 · Clarification Layer — *Request understanding (human-in-the-loop, trước generate)* `#flag-off`
 >
 > 📄 Giải thích (thiết kế + toàn bộ lịch sử implementation/redesign): [`features/e7-clarification-layer/explainer.md`](./features/e7-clarification-layer/explainer.md)
