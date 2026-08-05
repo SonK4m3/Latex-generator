@@ -2,7 +2,7 @@
 
 // Trợ lý AI Chat cho trang chủ: soạn yêu cầu bằng ngôn ngữ tự nhiên, chọn dạng
 // tài liệu qua Menubar, và xem hội thoại/stream trong MessageScroller.
-import { Fragment, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PaperclipIcon, PlusIcon, SendHorizontalIcon, SparklesIcon, XIcon } from "lucide-react";
 import MarkdownIt from "markdown-it";
@@ -64,7 +64,14 @@ const previewMd = new MarkdownIt({ html: false, linkify: false, typographer: fal
 // mỗi lần render.
 const TEMPLATE_GROUPS = groupedTemplates();
 
-export default function ChatAssistant() {
+export default function ChatAssistant({
+  onPreview,
+}: {
+  /** Gọi khi người dùng chọn xem 1 item trong chat (thay cho navigate sang route khác) — cho phép
+   *  HomeClient render preview ngay trong cùng màn hình. Nhận cả item (đủ streamedLatex/docId) để
+   *  panel bên phải luôn khớp đúng lượt chat đang xem, không chỉ 1 docId trơ. */
+  onPreview?: (item: import("@/components/useDocumentGenerationChat").ChatItem) => void;
+}) {
   const router = useRouter();
   const { items, busy, send, reset, answerClarification } = useDocumentGenerationChat();
   const [template, setTemplate] = useState<TemplateId>("academic");
@@ -82,6 +89,20 @@ export default function ChatAssistant() {
     !busy &&
     !preparing &&
     (text.trim().length > 0 || (!markdownMode && files.length > 0));
+
+  // Tự động đưa preview lên panel bên phải ngay khi có kết quả — phản hồi trực tiếp phản hồi
+  // dogfood "phải đợi gen ra hết rồi mới được xem" + "phải vào route chi tiết": không cần bấm
+  // "Mở tài liệu" nữa, panel tự cập nhật theo LƯỢT CHAT MỚI NHẤT đã hoàn tất (done), kể cả khi
+  // biên dịch thất bại (vẫn muốn xem log/mã nguồn ngay, không chỉ khi thành công).
+  const lastCompletedIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!onPreview) return;
+    const lastDone = [...items].reverse().find((it) => it.status === "done" && it.docId);
+    if (lastDone && lastDone.id !== lastCompletedIdRef.current) {
+      lastCompletedIdRef.current = lastDone.id;
+      onPreview(lastDone);
+    }
+  }, [items, onPreview]);
 
   const previewHtml = useMemo(
     () => (markdownMode && showPreview ? previewMd.render(text) : ""),
@@ -199,7 +220,10 @@ export default function ChatAssistant() {
                 >
                   <ChatMessageItem
                     item={item}
-                    onOpen={(docId) => router.push(`/documents/${docId}`)}
+                    onOpen={(docId) =>
+                      onPreview ? onPreview(item) : router.push(`/documents/${docId}`)
+                    }
+                    onOpenFull={() => router.push(`/documents/${item.docId}`)}
                     onAnswerClarification={answerClarification}
                   />
                 </MessageScrollerItem>

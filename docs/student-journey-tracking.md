@@ -34,6 +34,14 @@ Chú thích: ✅ Done · 🟡 Đang dở / một phần · 🔲 Chưa bắt đ�
 | 8. Lưu & quản lý nhiều tài liệu theo user | ✅ | Nhóm 1 |
 | 9. Tải PDF / xuất mã nguồn (.zip dự án) | 🟡 | Nhóm 2 |
 
+> **2026-08-05 — Cập nhật UX bước 2 (dogfood thật):** luồng tạo tài liệu (`/app`, trước là `/`) đã
+> đổi từ "chat → chờ → mở route khác để xem" sang **2 cột chat + preview live cùng màn hình**, kèm
+> hiển thị TỪNG BƯỚC xử lý (phân tích → sinh LaTeX → biên dịch → tự sửa lỗi lần N) thay vì 1 spinner
+> tĩnh. Ghi nhận từ chính việc dùng thật (không phải suy diễn) — 3 điểm khó chịu gốc: (1) không gian
+> chat nhỏ, danh sách tài liệu chiếm giữa màn hình không hợp lý, không có preview; (2) sinh tài liệu
+> là "hộp đen", phải chờ xong hết mới xem; (3) xem kết quả phải rời sang route khác. Chi tiết:
+> [`feature-tracking.md` § UI Status Tracking (mở rộng)](./feature-tracking.md).
+
 ---
 
 ## Nhóm 1 — Danh tính & lưu trữ bền (Auth + DB) ✅ (chờ live)

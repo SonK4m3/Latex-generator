@@ -55,7 +55,16 @@ export default function LoginForm() {
         }
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Thao tác thất bại.");
+      if (
+        err instanceof Error &&
+        (err.message === "Failed to fetch" || err.name === "TypeError")
+      ) {
+        setError(
+          "Không thể kết nối đến máy chủ xác thực. Vui lòng kiểm tra lại kết nối mạng hoặc cấu hình Supabase.",
+        );
+      } else {
+        setError(err instanceof Error ? err.message : "Thao tác thất bại.");
+      }
     } finally {
       setLoading(false);
     }

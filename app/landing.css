@@ -1,0 +1,539 @@
+/* ==========================================================================
+   Landing page — "The Thesis Binding & Title Page" world.
+   Scoped entirely to this stylesheet; the tool (/app, /documents/[id]) and
+   its Operate-mode world ("The Compile Room", root DESIGN.md) never import
+   this file, and this file never references --primary/--background/etc.
+   Committed color strategy: cloth navy/charcoal ground carries the large
+   majority of the surface; wax-seal red is the single accent, rationed to
+   the seal button and "sealed/complete" status only.
+   ========================================================================== */
+
+.ll-root {
+  --cloth: #0f1a2e;
+  --cloth-deep: #0a1220;
+  --cloth-weave: rgba(255, 255, 255, 0.035);
+  --paper: #f3ecdd;
+  --paper-deep: #e7dcc2;
+  --gold: #c8a24d;
+  --gold-bright: #e4c477;
+  --ink: #1c1712;
+  --wax: #9a2b1f;
+  --wax-bright: #c23a28;
+  --thread: rgba(200, 162, 77, 0.55);
+
+  background: var(--cloth);
+  color: var(--paper);
+  min-height: 100%;
+  font-family: "Georgia", "Iowan Old Style", "Palatino Linotype", serif;
+  overflow-x: hidden;
+}
+
+/* ---- Topbar --------------------------------------------------------- */
+
+.ll-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1.5rem clamp(1.25rem, 5vw, 4rem) 0;
+}
+
+.ll-wordmark {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  color: var(--gold-bright);
+}
+
+.ll-topnav {
+  display: flex;
+  align-items: center;
+  gap: 1.75rem;
+  font-size: 0.85rem;
+}
+
+.ll-topnav a {
+  color: var(--paper-deep);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+
+.ll-topnav a:hover,
+.ll-topnav a:focus-visible {
+  color: var(--gold-bright);
+  border-color: var(--gold);
+}
+
+.ll-topnav a:focus-visible {
+  outline: 2px solid var(--gold-bright);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+/* ---- Hero ------------------------------------------------------------ */
+
+.ll-hero {
+  position: relative;
+  padding: clamp(3rem, 8vw, 6rem) clamp(1.25rem, 5vw, 4rem) clamp(4rem, 8vw, 6rem);
+}
+
+.ll-hero-grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(
+      115deg,
+      var(--cloth-weave) 0px,
+      var(--cloth-weave) 1px,
+      transparent 1px,
+      transparent 3px
+    ),
+    radial-gradient(ellipse at 20% 0%, rgba(200, 162, 77, 0.08), transparent 60%);
+}
+
+.ll-hero-grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: clamp(2rem, 5vw, 4rem);
+  align-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.ll-title {
+  font-family: var(--font-cormorant), "Iowan Old Style", Georgia, serif;
+  font-weight: 500;
+  font-size: clamp(2.75rem, 6vw, 4.5rem);
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  color: var(--gold-bright);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.4);
+  margin: 0 0 1.25rem;
+}
+
+.ll-lede {
+  font-size: 1.0625rem;
+  line-height: 1.65;
+  color: var(--paper-deep);
+  max-width: 42ch;
+  margin: 0 0 1.75rem;
+}
+
+.ll-lede em {
+  color: var(--paper);
+  font-style: normal;
+  border-bottom: 1px solid var(--gold);
+}
+
+.ll-cta-row {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.ll-secondary-link {
+  font-size: 0.9rem;
+  color: var(--paper-deep);
+  text-decoration: none;
+  border-bottom: 1px solid var(--thread);
+  padding-bottom: 1px;
+}
+
+.ll-secondary-link:hover,
+.ll-secondary-link:focus-visible {
+  color: var(--gold-bright);
+  border-color: var(--gold-bright);
+}
+
+.ll-disclaimer {
+  margin-top: 1.5rem;
+  font-size: 0.75rem;
+  color: rgba(243, 236, 221, 0.5);
+  max-width: 40ch;
+}
+
+.ll-hero-stage {
+  display: flex;
+  justify-content: center;
+}
+
+/* ---- Seal button (the single committed accent) ----------------------- */
+
+.ll-seal-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 8.5rem;
+  height: 8.5rem;
+  border-radius: 50%;
+  text-decoration: none;
+  background: radial-gradient(circle at 35% 30%, var(--wax-bright), var(--wax) 70%);
+  box-shadow:
+    0 10px 24px -8px rgba(0, 0, 0, 0.55),
+    inset 0 2px 4px rgba(255, 255, 255, 0.18),
+    inset 0 -6px 10px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease;
+}
+
+.ll-seal-button-ring {
+  position: absolute;
+  inset: 0.4rem;
+  border-radius: 50%;
+  border: 1px dashed rgba(255, 255, 255, 0.35);
+}
+
+.ll-seal-button-label {
+  position: relative;
+  z-index: 1;
+  color: #fbe6cf;
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-align: center;
+  line-height: 1.25;
+  padding: 0 0.75rem;
+}
+
+.ll-seal-button:hover,
+.ll-seal-button:focus-visible {
+  transform: translateY(-2px) scale(1.03);
+  box-shadow:
+    0 16px 30px -8px rgba(0, 0, 0, 0.6),
+    inset 0 2px 4px rgba(255, 255, 255, 0.22),
+    inset 0 -6px 10px rgba(0, 0, 0, 0.32);
+}
+
+.ll-seal-button:focus-visible {
+  outline: 2px solid var(--gold-bright);
+  outline-offset: 4px;
+}
+
+.ll-seal-button:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* ---- Binding stations (the fused staging device) ---------------------- */
+
+.ll-stations {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ll-stations--hero {
+  flex-direction: column;
+  gap: 1.5rem;
+  background: linear-gradient(160deg, var(--paper), var(--paper-deep));
+  border-radius: 4px;
+  padding: 2rem 1.75rem;
+  box-shadow: 0 24px 48px -16px rgba(0, 0, 0, 0.5);
+  transform: rotate(-1deg);
+  max-width: 22rem;
+}
+
+.ll-stations--hero .ll-station {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.9rem;
+  color: var(--ink);
+}
+
+.ll-stations--hero .ll-station-thread {
+  display: none;
+}
+
+.ll-station {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  text-align: center;
+  min-width: 0;
+}
+
+.ll-station-medallion {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  border: 1.5px solid var(--gold);
+  color: var(--gold-bright);
+  background: rgba(200, 162, 77, 0.08);
+  flex-shrink: 0;
+}
+
+.ll-stations--hero .ll-station-medallion {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-color: var(--wax);
+  color: var(--wax);
+  background: rgba(154, 43, 31, 0.08);
+}
+
+.ll-station-medallion svg {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.ll-station-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.ll-stations--hero .ll-station-body {
+  text-align: left;
+}
+
+.ll-station-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.ll-station-detail {
+  font-size: 0.75rem;
+  color: rgba(243, 236, 221, 0.65);
+  max-width: 14ch;
+}
+
+.ll-station-thread {
+  position: absolute;
+  top: 1.375rem;
+  left: calc(50% + 1.75rem);
+  right: calc(-50% + 1.75rem);
+  height: 1px;
+  background-image: linear-gradient(to right, var(--thread) 60%, transparent 0%);
+  background-size: 6px 1px;
+  background-repeat: repeat-x;
+}
+
+/* ---- How-it-works section --------------------------------------------- */
+
+.ll-how {
+  padding: clamp(3rem, 6vw, 5rem) clamp(1.25rem, 5vw, 4rem);
+  max-width: 1200px;
+  margin: 0 auto;
+  border-top: 1px solid rgba(200, 162, 77, 0.2);
+}
+
+.ll-section-title {
+  font-family: var(--font-cormorant), Georgia, serif;
+  font-size: clamp(1.75rem, 3vw, 2.5rem);
+  font-weight: 500;
+  color: var(--gold-bright);
+  margin: 0 0 0.75rem;
+}
+
+.ll-section-lede {
+  font-size: 1rem;
+  color: var(--paper-deep);
+  max-width: 60ch;
+  line-height: 1.6;
+  margin: 0 0 2.5rem;
+}
+
+/* ---- Reveal panel (proof: the real tool) ------------------------------ */
+
+.ll-reveal {
+  display: grid;
+  grid-template-columns: 1fr 1.1fr;
+  gap: clamp(2rem, 5vw, 4rem);
+  align-items: center;
+  padding: clamp(3rem, 6vw, 5rem) clamp(1.25rem, 5vw, 4rem);
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.ll-reveal-kicker {
+  font-size: 0.75rem;
+  letter-spacing: 0.18em;
+  color: var(--gold);
+  margin: 0 0 0.75rem;
+  text-transform: uppercase;
+}
+
+.ll-reveal-title {
+  font-family: var(--font-cormorant), Georgia, serif;
+  font-size: clamp(1.75rem, 3vw, 2.25rem);
+  font-weight: 500;
+  color: var(--paper);
+  margin: 0 0 1rem;
+  line-height: 1.15;
+}
+
+.ll-reveal-lede {
+  font-size: 0.95rem;
+  color: var(--paper-deep);
+  line-height: 1.6;
+  max-width: 42ch;
+}
+
+.ll-reveal-frame {
+  border-radius: 6px;
+  overflow: hidden;
+  background: #fafaf9;
+  box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.6);
+  transform: rotate(0.75deg);
+}
+
+.ll-reveal-frame-chrome {
+  display: flex;
+  gap: 0.4rem;
+  padding: 0.6rem 0.75rem;
+  background: #e5e5e5;
+}
+
+.ll-reveal-dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: #c4c4c4;
+}
+
+.ll-reveal-frame-body {
+  padding: 1rem;
+}
+
+.ll-reveal-tabs {
+  display: flex;
+  gap: 0.375rem;
+  margin-bottom: 0.75rem;
+}
+
+.ll-reveal-tab {
+  font-size: 0.75rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 0.25rem;
+  background: #e4e4e7;
+  color: #18181b;
+}
+
+.ll-reveal-tab--active {
+  background: #2563eb;
+  color: #fff;
+}
+
+.ll-reveal-page {
+  height: 12rem;
+  border-radius: 0.375rem;
+  background: repeating-linear-gradient(
+    to bottom,
+    #f4f4f5 0px,
+    #f4f4f5 6px,
+    #ececef 6px,
+    #ececef 7px
+  );
+  border: 1px solid #e4e4e7;
+}
+
+/* ---- Closing ----------------------------------------------------------- */
+
+.ll-closing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  text-align: center;
+  padding: clamp(4rem, 8vw, 6rem) clamp(1.25rem, 5vw, 4rem);
+  background: linear-gradient(180deg, transparent, var(--cloth-deep));
+}
+
+.ll-closing-kicker {
+  font-size: 0.8rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin: 0;
+}
+
+.ll-closing-title {
+  font-family: var(--font-cormorant), Georgia, serif;
+  font-size: clamp(1.75rem, 3.5vw, 2.5rem);
+  font-weight: 500;
+  color: var(--paper);
+  margin: 0;
+  max-width: 30ch;
+}
+
+/* ---- Footer ------------------------------------------------------------ */
+
+.ll-footer {
+  display: flex;
+  justify-content: space-between;
+  padding: 1.5rem clamp(1.25rem, 5vw, 4rem) 2rem;
+  font-size: 0.8rem;
+  color: rgba(243, 236, 221, 0.55);
+  border-top: 1px solid rgba(200, 162, 77, 0.15);
+}
+
+.ll-footer a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.ll-footer a:hover,
+.ll-footer a:focus-visible {
+  color: var(--gold-bright);
+}
+
+/* ---- Responsive --------------------------------------------------------- */
+
+@media (max-width: 860px) {
+  .ll-hero-grid,
+  .ll-reveal {
+    grid-template-columns: 1fr;
+  }
+
+  .ll-hero-stage {
+    order: -1;
+  }
+
+  .ll-stations--hero {
+    transform: none;
+    margin: 0 auto;
+  }
+
+  .ll-reveal-frame {
+    transform: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .ll-stations:not(.ll-stations--hero) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1.5rem;
+  }
+
+  .ll-stations:not(.ll-stations--hero) .ll-station {
+    flex-direction: row;
+    text-align: left;
+  }
+
+  .ll-stations:not(.ll-stations--hero) .ll-station-body {
+    text-align: left;
+  }
+
+  .ll-stations:not(.ll-stations--hero) .ll-station-thread {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ll-seal-button {
+    transition: none;
+  }
+}

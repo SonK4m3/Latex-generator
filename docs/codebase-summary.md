@@ -1,13 +1,16 @@
 # Codebase Summary
 
 ## 1. High-Level Structure
-- **`app/`**: Next.js App Router — chỉ chứa route/page (`page.tsx`, `layout.tsx`, `login/`,
-  `auth/callback/`, `documents/[id]/`) và API routes (`app/api/{generate,extract,compile,
-  documents,document,health}/`). Không còn chứa UI component (đã tách ra `components/`).
+- **`app/`**: Next.js App Router — chỉ chứa route/page (`page.tsx` = landing page công khai tại `/`,
+  `app/page.tsx` + `landing.css` + `components/landing/`; `app/app/` = công cụ tạo/quản lý tài liệu
+  đã đăng nhập, trước đây ở `/`, `layout.tsx`, `login/`, `auth/callback/`, `documents/[id]/`) và API
+  routes (`app/api/{generate,extract,compile,documents,document,health}/`). Không còn chứa UI
+  component (đã tách ra `components/`).
 - **`components/`**: Toàn bộ React UI component dùng chung (`ChatAssistant`, `DocumentWorkspace`,
   `DocumentList`, `GeneratorForm`, `TemplateSelect`, `ResultPanel`, `AuthStatus`,
   `theme-provider`...) + `components/ui/` (shadcn/ui primitives: `button`, `dropdown-menu`,
-  `input`, `menubar`...). Có `components/__tests__/` riêng cho component test.
+  `input`, `menubar`...) + `components/landing/` (component riêng cho landing page — không dùng
+  token/màu của công cụ). Có `components/__tests__/` riêng cho component test.
 - **`compile-service/`** (~600 files gồm tests/dependencies): sandboxed Node.js service chạy
   Tectonic, có Dockerfile để cô lập.
 - **`lib/`**: business logic của Next.js app, chia theo domain:
@@ -41,10 +44,13 @@
 - **`specs/`**: đặc tả tính năng theo spec-kit (ví dụ `001-latex-document-generation`).
 
 ## 2. Key Workflows
-- **Generation Flow**: UI (`components/`) → Next.js API route (streaming SSE trạng thái) →
-  `lib/orchestrator` → `generateWithTruncationRecovery()` (đảm bảo output không bị cắt cụt giữa
-  đường trước khi validate) → AI Provider → `lib/validation` (kiểm cấu trúc) → `compile-service`
-  → PDF response.
+- **Generation Flow**: UI (`components/`, `/app`) → Next.js API route (streaming SSE trạng thái
+  granular: `analyzing`/`generating`/`compiling`/`repairing` qua `StepStatus`, không chỉ 1 event
+  `compiling` duy nhất) → `lib/orchestrator` → `generateWithTruncationRecovery()` (đảm bảo output
+  không bị cắt cụt giữa đường trước khi validate) → AI Provider → `lib/validation` (kiểm cấu trúc)
+  → `compile-service` → PDF response. Panel preview (PDF/source, `ResultPanel`) cập nhật NGAY khi
+  1 lượt chat xong, cùng màn hình `/app` — không cần điều hướng sang `/documents/[id]` (route đó
+  vẫn còn, dùng cho chỉnh sửa sâu qua nút "Mở toàn màn hình").
 - **Repair Flow**: nếu `validateLatex()` hoặc `compile-service` báo lỗi (trên một document ĐÃ
   HOÀN CHỈNH), orchestrator parse lỗi và yêu cầu AI sửa tối thiểu, lặp tối đa `maxAttempts` lần.
   Lưu ý: truncation (generation CHƯA HOÀN THÀNH) được xử lý HOÀN TOÀN TRƯỚC bước này, không tính

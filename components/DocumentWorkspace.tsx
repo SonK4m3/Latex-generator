@@ -285,7 +285,7 @@ export default function DocumentWorkspace({
     return (
       <div className="mx-auto w-full max-w-3xl p-6">
         <p className="text-red-600">{loadError}</p>
-        <Link href="/" className="mt-2 inline-block text-blue-600 hover:underline">
+        <Link href="/app" className="mt-2 inline-block text-blue-600 hover:underline">
           ← Về trang chủ
         </Link>
       </div>
@@ -299,7 +299,7 @@ export default function DocumentWorkspace({
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-4 p-6">
       <header className="flex flex-wrap items-center gap-3">
-        <Link href="/" className="text-sm text-blue-600 hover:underline">
+        <Link href="/app" className="text-sm text-blue-600 hover:underline">
           ← Tài liệu
         </Link>
         <h1 className="min-w-0 flex-1 truncate text-xl font-semibold">{doc.title}</h1>

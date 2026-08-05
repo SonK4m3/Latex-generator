@@ -3,6 +3,7 @@
 import { getConfig } from "@/lib/config";
 import { validateDocumentInput } from "@/lib/validation/input";
 import { runDocument, runDocumentFromMarkdown } from "@/lib/orchestrator/document";
+import type { StepStatus } from "@/lib/orchestrator/document";
 import { buildOrchestratorDeps, deriveTitle } from "@/lib/orchestrator/deps";
 import { CompileServiceError } from "@/lib/compile/client";
 import { getRateLimiter, clientIp } from "@/lib/ratelimit/tokenBucket";
@@ -43,11 +44,12 @@ function runByFormat(
   deps: OrchestratorDeps,
   onChunk?: (text: string) => void,
   onCompileStart?: () => void,
+  onStepStatus?: (status: StepStatus) => void,
 ): Promise<DocumentResult> {
   if (req.inputFormat === "markdown") {
-    return runDocumentFromMarkdown(req, deps, onChunk, onCompileStart);
+    return runDocumentFromMarkdown(req, deps, onChunk, onCompileStart, onStepStatus);
   }
-  return runDocument(req, deps, onChunk, onCompileStart);
+  return runDocument(req, deps, onChunk, onCompileStart, onStepStatus);
 }
 
 /**
@@ -268,9 +270,10 @@ export async function POST(request: Request): Promise<Response> {
             (chunk) => {
               enqueue("chunk", { text: chunk });
             },
-            () => {
-              enqueue("status", { status: "compiling" });
-            }
+            undefined,
+            (stepStatus) => {
+              enqueue("status", stepStatus);
+            },
           );
 
           const failed = isDocumentError(result);

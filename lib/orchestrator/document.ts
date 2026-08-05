@@ -55,6 +55,20 @@ export interface OrchestratorDeps {
   logger?: (event: string, fields: LogFields) => void;
 }
 
+/**
+ * Trạng thái bước GỬI CHO CLIENT (khác deps.logger — đó là observability server-side, không phải
+ * cho UI). Dùng để hiện "đang phân tích / đang sinh LaTeX / đang biên dịch / đang tự sửa lỗi (lần
+ * N)" trong chat, thay cho 1 spinner tĩnh duy nhất — phản hồi phản hồi thật của người dùng khi
+ * dogfood: "trong chat lại không cho xem các step, phải đợi gen ra hết rồi mới được xem".
+ */
+export type StepStatus =
+  | { step: "analyzing" }
+  | { step: "generating" }
+  | { step: "compiling" }
+  | { step: "repairing"; attempt: number; errorType: string };
+
+export type OnStepStatus = (status: StepStatus) => void;
+
 function toBase64(bytes: Uint8Array): string {
   return Buffer.from(bytes).toString("base64");
 }
@@ -162,6 +176,7 @@ async function runRepairLoop(
   deps: OrchestratorDeps,
   templateId?: TemplateId,
   compileFn?: (latex: string) => Promise<CompileResult>,
+  onStepStatus?: OnStepStatus,
 ): Promise<DocumentResult> {
   const tpl = templateId ? getTemplate(templateId) : undefined;
   const validateOpts = {
@@ -184,6 +199,7 @@ async function runRepairLoop(
       lastLog = diagnosticsToLog(v.diagnostics);
     } else {
       // 2) Compile (final source of truth).
+      onStepStatus?.({ step: "compiling" });
       const c = await compile(latex);
       if (c.success) {
         deps.logger?.("orchestrator.repair_success", { attempts, docType });
@@ -197,10 +213,8 @@ async function runRepairLoop(
       lastLog = truncateLog(c.log);
     }
 
-    deps.logger?.("orchestrator.repair_attempt", {
-      attempts,
-      errorType: detectErrorType(lastLog),
-    });
+    const errorType = detectErrorType(lastLog);
+    deps.logger?.("orchestrator.repair_attempt", { attempts, errorType });
 
     // Out of attempts → business failure (HTTP 200 at route).
     if (attempts >= maxAttempts) {
@@ -216,6 +230,7 @@ async function runRepairLoop(
 
     // 3) Patch: send log/diagnostics to provider for repair.
     attempts += 1;
+    onStepStatus?.({ step: "repairing", attempt: attempts, errorType });
     latex = await regenerate(latex, lastLog);
   }
 }
@@ -229,7 +244,10 @@ export async function runDocument(
   deps: OrchestratorDeps,
   onChunk?: (text: string) => void,
   onCompileStart?: () => void,
+  onStepStatus?: OnStepStatus,
 ): Promise<DocumentResult> {
+  onStepStatus?.({ step: "analyzing" });
+
   // RAG (E3): chọn chunk nguồn liên quan TRƯỚC khi generate (embedding bất đồng bộ).
   let retrievedSources: RetrievedChunk[] | undefined;
   if (deps.retrieve && req.sources && req.sources.length > 0) {
@@ -271,6 +289,8 @@ export async function runDocument(
       estimatedInputTokens: assembled.trace.estimatedInputTokens,
     });
   }
+
+  onStepStatus?.({ step: "generating" });
 
   const initialOutcome = await generateWithTruncationRecovery(
     deps.provider,
@@ -315,6 +335,8 @@ export async function runDocument(
     req.docType,
     deps,
     req.template,
+    undefined,
+    onStepStatus,
   );
 }
 
@@ -330,7 +352,9 @@ export async function runDocumentFromMarkdown(
   deps: OrchestratorDeps,
   onChunk?: (text: string) => void,
   onCompileStart?: () => void,
+  onStepStatus?: OnStepStatus,
 ): Promise<DocumentResult> {
+  onStepStatus?.({ step: "generating" });
   const template = req.template;
   const tpl = template ? getTemplate(template) : undefined;
   const documentClass = tpl?.documentClass ?? "article";
@@ -375,6 +399,8 @@ export async function runDocumentFromMarkdown(
     req.docType,
     deps,
     req.template,
+    undefined,
+    onStepStatus,
   );
 
   if (warnings.length > 0) result.warnings = warnings;

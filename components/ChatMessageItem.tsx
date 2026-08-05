@@ -17,15 +17,38 @@ import {
 import { Marker, MarkerContent, MarkerIcon } from "@/components/ui/marker";
 import { Spinner } from "@/components/ui/spinner";
 import ClarificationQuestionForm from "@/components/ClarificationQuestionForm";
-import type { ChatItem } from "@/components/useDocumentGenerationChat";
+import type { ChatItem, StepStatus } from "@/components/useDocumentGenerationChat";
+
+/** Nhãn tiếng Việt cho từng bước — phản hồi trực tiếp phản hồi dogfood: "không cho xem các step,
+ *  phải đợi gen ra hết rồi mới được xem". Mỗi bước hiện tên cụ thể, lần tự sửa hiện rõ số lần +
+ *  loại lỗi để người dùng biết hệ thống đang thật sự làm gì, không phải 1 spinner mơ hồ. */
+function stepStatusLabel(status?: StepStatus): string {
+  if (!status) return "Đang tạo tài liệu…";
+  switch (status.step) {
+    case "understanding":
+      return "Đang phân tích yêu cầu…";
+    case "analyzing":
+      return "Đang chuẩn bị nội dung…";
+    case "generating":
+      return "Đang sinh mã LaTeX…";
+    case "compiling":
+      return "Đang biên dịch PDF…";
+    case "repairing":
+      return `Đang tự sửa lỗi (lần ${status.attempt}, ${status.errorType})…`;
+  }
+}
 
 export default function ChatMessageItem({
   item,
   onOpen,
+  onOpenFull,
   onAnswerClarification,
 }: {
   item: ChatItem;
   onOpen: (docId: string) => void;
+  /** Mở route chỉnh sửa đầy đủ (/documents/[id]) — luôn có sẵn như lối thoát, phòng khi cần sửa
+   *  sâu (multi-file, chat-edit lịch sử) mà panel preview trong /app không phục vụ. */
+  onOpenFull?: () => void;
   onAnswerClarification: (botId: string, jobId: string, answers: Record<string, string>) => void;
 }) {
   // Lượt của người dùng: căn phải, bong bóng primary, không cần avatar.
@@ -67,7 +90,7 @@ export default function ChatMessageItem({
               <MarkerIcon>
                 <Spinner />
               </MarkerIcon>
-              <MarkerContent className="shimmer">Đang tạo tài liệu…</MarkerContent>
+              <MarkerContent className="shimmer">{stepStatusLabel(item.stepStatus)}</MarkerContent>
             </Marker>
           </>
         )}
@@ -101,8 +124,13 @@ export default function ChatMessageItem({
                   onClick={() => onOpen(item.docId as string)}
                 >
                   <FileTextIcon data-icon="inline-start" />
-                  Mở tài liệu
+                  Xem trong bảng bên
                 </Button>
+                {onOpenFull && (
+                  <Button size="sm" variant="ghost" onClick={onOpenFull}>
+                    Mở toàn màn hình
+                  </Button>
+                )}
               </MessageFooter>
             )}
           </>

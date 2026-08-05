@@ -11,7 +11,7 @@ Bảng theo dõi tiến độ các tính năng của dự án AI LaTeX Generator
 | ✅ | **Auto-repair compilation loop** | Vòng lặp tự động bắt lỗi biên dịch và gửi lại log cho AI để sửa lỗi (re-compile loop). |
 | ✅ | **File-based CRUD operations** | Quản lý tài liệu đã lưu (create, read, update, delete). |
 | ✅ | **Chat-based iterative editing** | Chỉnh sửa tài liệu lặp đi lặp lại thông qua chỉ thị chat với người dùng. |
-| ✅ | **UI Status Tracking** | Cập nhật API routes để gửi sự kiện compiling (SSE) sớm cho client, cập nhật UI real-time. |
+| ✅ | **UI Status Tracking** | Cập nhật API routes để gửi sự kiện compiling (SSE) sớm cho client, cập nhật UI real-time. **Mở rộng 2026-08-05:** granular step status (`analyzing`/`generating`/`compiling`/`repairing` kèm số lần thử + loại lỗi) thay cho 1 event `compiling` duy nhất; luồng tạo tài liệu (`/app`) đổi sang layout 2 cột — panel preview (PDF/source) cập nhật NGAY khi 1 lượt chat xong, không cần điều hướng sang `/documents/[id]` để xem. Route chi tiết vẫn còn (nút "Mở toàn màn hình") cho chỉnh sửa sâu. Bắt nguồn từ dogfood thật (không phải suy diễn) — xem [`student-journey-tracking.md`](./student-journey-tracking.md). Files: `lib/orchestrator/document.ts` (`StepStatus`/`OnStepStatus`), `app/api/documents/route.ts`, `components/{useDocumentGenerationChat,ChatAssistant,ChatMessageItem,HomeClient}.tsx`. |
 
 ---
 

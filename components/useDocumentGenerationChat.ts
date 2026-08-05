@@ -16,6 +16,16 @@ import type { InputFormat, SourceFile, TemplateId } from "@/lib/types/document";
 
 export type ChatItemStatus = "streaming" | "done" | "error" | "awaiting_clarification";
 
+/** Trạng thái bước hiện tại khi đang streaming — khớp StepStatus (lib/orchestrator/document.ts),
+ *  nhận qua SSE event `status`. Cho phép hiện "đang phân tích / đang sinh / đang biên dịch / đang
+ *  tự sửa lỗi (lần N)" trong chat thay vì 1 spinner tĩnh duy nhất. */
+export type StepStatus =
+  | { step: "understanding" }
+  | { step: "analyzing" }
+  | { step: "generating" }
+  | { step: "compiling" }
+  | { step: "repairing"; attempt: number; errorType: string };
+
 /** Một câu hỏi cần hỏi lại người dùng trước khi tiếp tục generate (E7). Khớp với
  *  PendingQuestion (lib/clarification/policy.ts) — payload thật gửi qua SSE event
  *  `awaiting_user_input`, xem app/api/documents/route.ts. */
@@ -40,6 +50,9 @@ export interface ChatItem {
   docId?: string;
   /** Tài liệu có PDF biên dịch được hay không. */
   hasPdf?: boolean;
+  /** PDF thật (base64) khi có — cho phép preview ngay trong panel bên phải mà không cần fetch lại
+   *  qua route riêng. */
+  pdfBase64?: string;
   /** Thông báo lỗi (khi thất bại). */
   error?: string;
   /** E7 — có mặt khi status === "awaiting_clarification": jobId để POST resume, và danh sách câu
@@ -48,6 +61,8 @@ export interface ChatItem {
    *  session không hết hạn theo nghĩa "phải trả lời trước X phút", chỉ báo lỗi rõ ràng nếu server
    *  từ chối lúc submit thật (xem ClarificationQuestionForm). */
   clarification?: { jobId: string; questions: ClarificationQuestion[] };
+  /** Bước hiện tại của quy trình sinh/tự sửa (chỉ có ý nghĩa khi status === "streaming"). */
+  stepStatus?: StepStatus;
 }
 
 let idCounter = 0;
@@ -138,6 +153,14 @@ export function useDocumentGenerationChat() {
             } else if (data.text) {
               acc += data.text;
               patch({ streamedLatex: acc });
+            } else if (data.step) {
+              // Status event từ orchestrator (StepStatus) — luôn append theo dòng, KHÔNG dùng
+              // event "status" cũ ({status:"understanding"/"compiling"}) để tránh nhầm 2 payload
+              // shape khác nhau trên cùng 1 field; phân biệt bằng key `step` (StepStatus) vs
+              // `status` (payload cũ, giữ tương thích với maybeClarify's "understanding").
+              patch({ stepStatus: data as StepStatus });
+            } else if (data.status === "understanding") {
+              patch({ stepStatus: { step: "understanding" } });
             } else if (data.doc) {
               settled = true;
               const failed = Boolean(data.doc.error);
@@ -148,6 +171,7 @@ export function useDocumentGenerationChat() {
                 streamedLatex: acc,
                 docId: data.doc.id,
                 hasPdf: Boolean(data.doc.pdfBase64),
+                pdfBase64: data.doc.pdfBase64,
                 error: failed ? data.doc.error : undefined,
                 clarification: undefined,
                 text: failed
