@@ -33,7 +33,7 @@ Bảng theo dõi tiến độ các tính năng của dự án AI LaTeX Generator
 
 | Trạng thái | Tính năng | Mô tả chi tiết |
 | :---: | :--- | :--- |
-| 🔄 | **Authentication & Database (v2)** | Multi-user Auth qua Supabase (đăng nhập, session, RLS theo `owner_id`) + lưu trữ Postgres qua `STORE_BACKEND=supabase` — **đã implement cho document CRUD**. Còn thiếu: `middleware.ts` tập trung (hiện gate quyền tại từng route/component, chưa có 1 lớp middleware chung), workspace/project ownership (multi-user cho E1 multi-file), migration dữ liệu cũ từ file-based sang Postgres. |
+| 🔄 | **Authentication & Database (v2)** | Supabase Auth + Postgres/RLS document CRUD đã có. **Safe scope 2026-08-05:** Next 16 `proxy.ts` refresh session/redirect UI, email/password + Google OAuth entry, password-reset page, callback chặn open redirect; migration `0004` định nghĩa profile, personal workspace, RLS và RPC quota atomic 10 lượt generation/ngày. API chỉ enforce quota khi `STORE_BACKEND=supabase`; file-store/offline không đổi. **Chưa apply/verify trên Supabase thật.** Backlog: dashboard account/quota, migration rehearsal file→Postgres, project ownership/sharing và realtime. |
 | 🔲 | **Advanced deployment strategies** | Triển khai trên môi trường Cloud, Dockerization, thiết lập CI/CD pipeline. |
 
 ---
@@ -310,13 +310,12 @@ Các đầu việc cụ thể được trích xuất từ [`project-roadmap.md`]
 - [x] Tách dữ liệu theo người dùng (ownership/authorization): **RLS đầy đủ 4 policy**
       (select/insert/update/delete, tất cả `using (auth.uid() = owner_id)`), `owner_id` là cột
       `not null references auth.users(id) on delete cascade` — không thể tạo document không có chủ.
-- [ ] **Middleware tập trung** (`middleware.ts` ở root) — hiện CHƯA có; việc gate quyền đang nằm rời
-      rạc ở từng route/component (route Supabase tự chặn qua RLS ở tầng DB, nhưng chưa có 1 lớp
-      kiểm tra session sớm/redirect thống nhất ở tầng Next.js middleware).
-- [ ] **Ownership cho multi-file project (E1)** — RLS hiện chỉ áp cho bảng `documents` (single-doc
-      CRUD); chưa có khái niệm workspace/project multi-user khi E1 UI thật được wiring.
-- [ ] Lớp migration dữ liệu: chuyển tài liệu ĐÃ TỒN TẠI trên `file` backend (JSON trong `DATA_DIR`)
-      sang Postgres — hiện 2 backend độc lập, không tự động đồng bộ/migrate qua nhau.
+- [x] **Centralized route protection** — Next.js 16 `proxy.ts` gọi `updateSession()` để refresh session và redirect UI; server API/RLS vẫn là authorization cuối cùng.
+- [x] **Google OAuth + password recovery UI** — `login-form.tsx` gọi Supabase OAuth/recovery; `app/auth/reset-password/page.tsx`; callback chỉ redirect local path.
+- [x] **Personal workspace + daily quota schema** — migration `0004_accounts-workspaces-and-generation-quota.sql`: profile, workspace, usage/RLS, RPC atomic quota 10/day; API enforce khi `STORE_BACKEND=supabase`.
+- [ ] `#backlog` **Account/quota dashboard UI** — hiển thị profile, lượt còn lại và chu kỳ reset; cần Supabase runtime để xác minh.
+- [ ] `#backlog` **Migration rehearsal file → Postgres** — cần inventory dữ liệu thật, mapping ownership và rollback.
+- [ ] `#backlog` **Project ownership/sharing + realtime** — chỉ làm khi có nhu cầu collaboration đã xác thực.
 
 #### Advanced deployment strategies `#later`
 

@@ -10,7 +10,11 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request): Promise<Response> {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const redirectTo = searchParams.get("redirectTo") || "/";
+  const requestedRedirect = searchParams.get("redirectTo") || "/";
+  // Only accept local paths to prevent OAuth/email links becoming open redirects.
+  const redirectTo = requestedRedirect.startsWith("/") && !requestedRedirect.startsWith("//")
+    ? requestedRedirect
+    : "/";
 
   if (code) {
     const supabase = createClient(await cookies());

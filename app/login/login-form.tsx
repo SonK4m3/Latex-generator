@@ -20,6 +20,36 @@ export default function LoginForm() {
   const [info, setInfo] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  async function signInWithGoogle() {
+    setError(null);
+    setLoading(true);
+    const { error } = await createClient().auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback?redirectTo=${encodeURIComponent(redirectTo)}`,
+      },
+    });
+    if (error) {
+      setError("Không thể bắt đầu đăng nhập với Google. Vui lòng thử lại.");
+      setLoading(false);
+    }
+  }
+
+  async function requestPasswordReset() {
+    if (!email) {
+      setError("Nhập email trước khi yêu cầu đặt lại mật khẩu.");
+      return;
+    }
+    setError(null);
+    setLoading(true);
+    const { error } = await createClient().auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/reset-password`,
+    });
+    setLoading(false);
+    if (error) setError("Không thể gửi email đặt lại mật khẩu. Vui lòng thử lại.");
+    else setInfo("Nếu email tồn tại, liên kết đặt lại mật khẩu đã được gửi.");
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -111,6 +141,17 @@ export default function LoginForm() {
             ? "Đăng nhập"
             : "Đăng ký"}
       </Button>
+
+      {mode === "signin" && (
+        <>
+          <Button type="button" variant="outline" disabled={loading} onClick={signInWithGoogle}>
+            Tiếp tục với Google
+          </Button>
+          <button type="button" className="text-sm text-muted-foreground underline" disabled={loading} onClick={requestPasswordReset}>
+            Quên mật khẩu?
+          </button>
+        </>
+      )}
 
       <button
         type="button"

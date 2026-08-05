@@ -9,6 +9,7 @@ import { CompileServiceError } from "@/lib/compile/client";
 import { getRateLimiter, clientIp } from "@/lib/ratelimit/tokenBucket";
 import { createDocument, listDocuments } from "@/lib/store/documentStore";
 import { getCurrentUserId } from "@/lib/auth/current-user";
+import { consumeDailyGenerationQuota } from "@/lib/auth/generation-quota";
 import { isDocumentError, type DocumentRequest, type DocumentResult } from "@/lib/types/document";
 import type { OrchestratorDeps } from "@/lib/orchestrator/document";
 import { log } from "@/lib/log";
@@ -183,6 +184,25 @@ export async function POST(request: Request): Promise<Response> {
   const userId = await getCurrentUserId();
   if (!userId) {
     return Response.json({ error: "Chưa đăng nhập" }, { status: 401 });
+  }
+
+  // Only the Supabase backend has the atomic, database-enforced daily quota.
+  // The file backend remains usable for local/offline development.
+  if (cfg.storeBackend === "supabase") {
+    try {
+      const quota = await consumeDailyGenerationQuota();
+      if (!quota.allowed) {
+        return Response.json(
+          { error: `Bạn đã dùng hết ${quota.limit} lượt tạo tài liệu hôm nay.` },
+          { status: 429 },
+        );
+      }
+    } catch {
+      return Response.json(
+        { error: "Không thể xác minh hạn mức tạo tài liệu. Vui lòng thử lại sau." },
+        { status: 503 },
+      );
+    }
   }
 
   // Rate limit theo IP (tạo mới gọi AI).

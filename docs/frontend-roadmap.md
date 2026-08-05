@@ -63,10 +63,7 @@ template `#later`) và các quyết định kỹ thuật đã thống nhất:
 
 *Mục tiêu: Đưa ứng dụng đạt chuẩn Production Web App, tập trung vào trải nghiệm người dùng toàn diện.*
 
-- **FE-5.1 `[Web-Direction]`:** Nâng cấp Responsive Design cho Mobile/Tablet. Đảm bảo giao diện Workspace và Chat hiển thị tốt trên các màn hình nhỏ (Bottom Sheets, Collapsible Sidebars).
-- **FE-5.2 `[Web-Direction]`:** Cải thiện SEO (Server-Side Rendering với Next.js cho các trang Landing/Blog) và chia sẻ mạng xã hội (Open Graph, Twitter Cards).
-- **FE-5.3 `[Web-Direction]`:** Tối ưu Accessibility (a11y). Đảm bảo điều hướng bằng bàn phím (Keyboard Navigation) cho Editor và hỗ trợ Screen Reader cho toàn bộ hệ thống.
-- **FE-5.4 `[Web-Direction]`:** Tích hợp PWA (Progressive Web App) để người dùng có thể cài đặt app offline và truy cập nhanh các tài liệu đã cache.
+- **FE-5.1–FE-5.4 `[Web-Direction]`:** `#backlog` Responsive/mobile audit, full accessibility audit, guided template forms, SEO enrichment and offline-capable PWA are intentionally deferred. Current safe-scope ships `manifest.ts`, `robots.ts` (private routes disallowed), and `sitemap.ts`; it does **not** claim offline generation.
 
 ### ⚪ Phase 6: Nền tảng Đa người dùng (Platform Maturity & BE Integration v2)
 
