@@ -236,6 +236,8 @@ async function runRepairLoop(
 }
 
 /**
+ * [DEPRECATED] Orchestrator cũ: sinh 1 lèo từ đầu đến cuối.
+ * Sẽ được thay thế bằng các handle* trong kiến trúc State Machine.
  * Orchestrator: generate → AST validate → compile → patch, tối đa maxAttempts.
  * `attempts` = số lần generate. Happy path = 1. Trả DocumentResponse hoặc DocumentError.
  */
@@ -525,6 +527,151 @@ export async function runEdit(
       ).latex,
     req.docType,
     deps,
-    req.template,
   );
+}
+
+// ============================================================================
+// Kiến trúc Document State Machine (New Handlers)
+// ============================================================================
+
+import type { DocumentStatus } from "@/lib/types/document";
+
+/**
+ * Trạng thái trung gian khi thực thi từng bước của State Machine
+ */
+export interface StateMachineResult {
+  nextStatus: DocumentStatus;
+  planContent?: string;
+  latex?: string;
+  pdfBase64?: string;
+  log?: string;
+  error?: string;
+  attempts?: number;
+}
+
+/**
+ * Bước 1: Phân tích (Preflight)
+ * AI sẽ kiểm tra xem yêu cầu đã đủ chưa (Bypass nếu đủ).
+ */
+export async function handleAnalyze(
+  req: DocumentRequest,
+  deps: OrchestratorDeps
+): Promise<StateMachineResult> {
+  // TODO: Tích hợp logic Understand Request (Preflight thực tế). 
+  // Tạm thời, nếu description quá ngắn -> CLARIFYING. Dài -> PLANNED.
+  const isDetailed = req.description.length > 50; 
+  if (isDetailed) {
+    return { nextStatus: "PLANNED" };
+  }
+  return { nextStatus: "CLARIFYING" };
+}
+
+/**
+ * Bước 3: Lên dàn ý (Plan)
+ * Sinh ra dàn ý bằng tiếng Việt/Anh để người dùng duyệt trước khi sinh LaTeX.
+ */
+export async function handlePlan(
+  req: DocumentRequest,
+  deps: OrchestratorDeps
+): Promise<StateMachineResult> {
+  const planPrompt: GenerateInput = {
+    description: `Vui lòng lập một dàn ý chi tiết bằng Markdown cho tài liệu sau (không viết mã LaTeX, chỉ viết dàn ý các mục chính):\n\n${req.description}`,
+    docType: req.docType,
+    template: req.template,
+    maxTokensOverride: 1000,
+  };
+  const planOutcome = await deps.provider.generate(planPrompt);
+  return {
+    nextStatus: "PLANNED",
+    planContent: planOutcome.latex, // Tái sử dụng field latex của outcome
+  };
+}
+
+/**
+ * Bước 4: Sinh mã LaTeX từ dàn ý đã duyệt.
+ */
+export async function handleGenerate(
+  req: DocumentRequest,
+  planContent: string,
+  deps: OrchestratorDeps,
+  onChunk?: (text: string) => void
+): Promise<StateMachineResult> {
+  const blueprint = buildBlueprint({ ...req });
+  const assembled = assembleContext({
+    blueprint,
+    description: req.description + `\n\nDàn ý cần tuân thủ:\n${planContent}`,
+    sources: req.sources,
+  });
+
+  const generateInput: GenerateInput = {
+    description: req.description,
+    docType: req.docType,
+    template: req.template,
+    renderedPrompt: assembled?.rendered,
+    onChunk,
+  };
+
+  const outcome = await generateWithTruncationRecovery(
+    deps.provider,
+    generateInput,
+    undefined,
+    deps.logger
+  );
+
+  return {
+    nextStatus: "REVIEWING",
+    latex: outcome.latex,
+    attempts: 1,
+  };
+}
+
+/**
+ * Bước 5 & 6: Tự động review mã LaTeX và biên dịch.
+ * Sử dụng vòng lặp runRepairLoop hiện tại để tự review (validate) + compile.
+ */
+export async function handleReviewAndCompile(
+  initialLatex: string,
+  req: DocumentRequest,
+  deps: OrchestratorDeps,
+  onStepStatus?: OnStepStatus
+): Promise<StateMachineResult> {
+  const result = await runRepairLoop(
+    initialLatex,
+    async (previousLatex, errorLog) =>
+      (
+        await generateWithTruncationRecovery(
+          deps.provider,
+          {
+            description: req.description,
+            docType: req.docType,
+            template: req.template,
+            errorContext: { previousLatex, errorLog },
+          },
+          undefined,
+          deps.logger
+        )
+      ).latex,
+    req.docType,
+    deps,
+    req.template,
+    undefined,
+    onStepStatus
+  );
+
+  if (isDocumentError(result)) {
+    return {
+      nextStatus: "REVIEWING", // Vẫn kẹt ở Reviewing hoặc thất bại
+      latex: result.latex,
+      log: result.log,
+      error: result.error,
+      attempts: result.attempts,
+    };
+  }
+
+  return {
+    nextStatus: "EXPORTABLE",
+    latex: result.latex,
+    pdfBase64: result.pdfBase64,
+    attempts: result.attempts,
+  };
 }

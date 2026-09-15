@@ -144,6 +144,26 @@ export interface ChatMessage {
   createdAt: string; // ISO 8601
 }
 
+/** Trạng thái vòng đời của một tài liệu (Document State Machine) */
+export type DocumentStatus =
+  | "ANALYZING"
+  | "CLARIFYING"
+  | "PLANNED"
+  | "GENERATING"
+  | "REVIEWING"
+  | "COMPILING"
+  | "EXPORTABLE";
+
+export const DOCUMENT_STATUSES: readonly DocumentStatus[] = [
+  "ANALYZING",
+  "CLARIFYING",
+  "PLANNED",
+  "GENERATING",
+  "REVIEWING",
+  "COMPILING",
+  "EXPORTABLE",
+] as const;
+
 /** Tài liệu được lưu trữ (file-based). Nguồn sự thật cho luồng CRUD. */
 export interface StoredDocument {
   id: string;
@@ -162,6 +182,9 @@ export interface StoredDocument {
   updatedAt: string; // ISO 8601
   inputFormat?: InputFormat; // định dạng đã dùng để tạo (thiếu ⇒ "natural")
   sourceMarkdown?: string; // Markdown gốc nếu tạo từ Markdown (để round-trip)
+  status?: DocumentStatus; // Trạng thái vòng đời của tài liệu
+  planContent?: string; // Bản nháp dàn ý để user duyệt
+
   // ---- Multi-file project (E1) ----
   // Nếu `files` có mặt ⇒ tài liệu là DỰ ÁN nhiều file (text). `rootFile` là file gốc để compile
   // (mặc định "main.tex"). Quy ước: `latex` giữ nội dung file gốc để tương thích các luồng single-file
@@ -189,6 +212,8 @@ export type UpdateDocumentPatch = Partial<
     | "messages"
     | "files"
     | "rootFile"
+    | "status"
+    | "planContent"
   >
 >;
 
@@ -204,6 +229,7 @@ export interface DocumentSummary {
   updatedAt: string;
   /** true nếu tài liệu là dự án multi-file (E1a) — có `files[]` không rỗng. */
   isProject: boolean;
+  status?: DocumentStatus;
 }
 
 // ---- Compile ----
