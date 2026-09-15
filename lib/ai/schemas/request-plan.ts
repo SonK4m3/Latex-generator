@@ -13,8 +13,10 @@
 //   lúc (ví dụ 4, explainer.md § 3.2) — hai quyết định không gộp thành một enum duy nhất.
 import { z } from "zod";
 
-/** Đồng bộ thủ công với `TemplateId` (lib/types/document.ts) — chỉ 4 giá trị thật hiện có. */
-export const RequestPlanTemplateIdSchema = z.enum(["academic", "math", "thesis", "slides"]);
+import { TEMPLATE_IDS } from "@/lib/types/document";
+
+/** Đồng bộ tự động với `TemplateId` (lib/types/document.ts). */
+export const RequestPlanTemplateIdSchema = z.enum(TEMPLATE_IDS as unknown as [string, ...string[]]);
 
 /** Mức độ quan trọng của MỘT field bị thiếu — quyết định `askUserQuestion.required` (Quyết định B). */
 export const MissingInformationImportanceSchema = z.enum(["critical", "optional"]);

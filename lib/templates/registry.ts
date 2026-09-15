@@ -1455,6 +1455,24 @@ export const TEMPLATES: Record<TemplateId, DocumentTemplate> = {
       "\\section*{Kinh nghiệm} \\textbf{Công ty ABC} \\hfill 2022--nay",
       "\\begin{itemize}[leftmargin=*] \\item Phát triển dịch vụ web. \\end{itemize}",
     ].join(" "),
+    clarificationFields: [
+      {
+        id: "target_role",
+        importance: "critical",
+        question: "Bạn ứng tuyển vào vị trí nào?",
+      },
+      {
+        id: "experience",
+        importance: "critical",
+        question: "Hãy tóm tắt ngắn gọn các kinh nghiệm làm việc nổi bật của bạn.",
+      },
+      {
+        id: "skills",
+        importance: "optional",
+        question: "Hãy liệt kê các kỹ năng chính của bạn (nếu có).",
+        defaultIfSkipped: "Không có kỹ năng cụ thể được yêu cầu.",
+      },
+    ],
     renderMock: (d) =>
       // Self-laid-out CV: docRaw() (no \maketitle). Header is built by hand; sections are \section*.
       docRaw(

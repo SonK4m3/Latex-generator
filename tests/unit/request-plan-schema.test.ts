@@ -20,10 +20,9 @@ describe("RequestPlanSchema (E7 Task 2)", () => {
     expect(() => RequestPlanSchema.parse(validPlan())).not.toThrow();
   });
 
-  it("templateId ngoài 4 giá trị thật (TemplateId) → bị từ chối", () => {
-    // Chính bằng chứng đã phát hiện ở phần rà soát roadmap trước đó: "physics" KHÔNG phải
-    // TemplateId thật (chỉ có academic/math/thesis/slides) — schema PHẢI từ chối giá trị này.
-    const invalid = { ...validPlan(), templateId: "physics" };
+  it("templateId ngoài các giá trị thật (TemplateId) → bị từ chối", () => {
+    // "not_a_template" KHÔNG phải TemplateId thật — schema PHẢI từ chối giá trị này.
+    const invalid = { ...validPlan(), templateId: "not_a_template" };
     expect(() => RequestPlanSchema.parse(invalid)).toThrow();
   });
 
