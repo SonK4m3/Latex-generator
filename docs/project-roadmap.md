@@ -49,6 +49,7 @@ slide / đề thi (Toán, Lý, Hóa, kỹ thuật).
 | **Next** | Multimodal input | OCR công thức (E4) | O1 | Ảnh công thức → LaTeX dùng được | TB |
 | **Next** | Output quality | Prompt Engineering (E6) | O2 | ↑ compile success rate; prompt nhất quán, có thể đo | TB |
 | **Next** | Request understanding | Clarification Layer (E7) | O1, O2 | ↓ tài liệu sinh sai ý định do thiếu thông tin; UX hỏi lại nhất quán | Thấp |
+| **Next** | Content Transformation | Academic Document Formatter (E8) | O1, O2 | Formatter nội dung học thuật giữ nguyên chữ, không dùng AI sinh nội dung | Cao |
 | **Later** | Platform | Auth & Database v2 | O4 | Multi-user, lưu trữ DB | Thấp |
 | **Later** | Platform | Advanced deployment (CI/CD, Cloud) | O4 | Triển khai production ổn định | Thấp |
 
@@ -119,6 +120,12 @@ Mỗi epic = **hypothesis** + **success metric** + **effort (T-shirt: S/M/L/XL)*
 - **Effort:** L. **Outcome:** O1, O2. **Dependency:** **cứng — cần E6 Giai đoạn 3 (Eval + Versioning) hoàn thành trước** để có baseline compile rate/repair attempts làm mốc so sánh; không chỉ "sau khi E6 ổn định" mà cụ thể là sau khi có số liệu đo được. Độc lập với E1/E2/E3/E4. Không thay thế E2 (E2 duyệt outline sau khi hiểu ý định; E7 làm rõ ý định trước khi có outline).
 - **Ghi chú:** Cần **eval data thực tế** (tỉ lệ request mơ hồ dẫn tới chất lượng kém) trước khi cam kết effort L — tương tự nguyên tắc "chờ chứng minh cần thiết bằng dữ liệu" đã áp dụng ở E6. Xem thiết kế đầy đủ: [`features/e7-clarification-layer/explainer.md`](./features/e7-clarification-layer/explainer.md).
 
+### E8 · Academic Document Formatter — *Content Transformation*
+
+- **Hypothesis:** Ta tin rằng *cho phép người dùng tải lên nội dung có sẵn và tự động format thành file LaTeX chuẩn (báo cáo, luận văn) mà KHÔNG thay đổi hay "bịa" chữ của họ* sẽ *mở rộng tập người dùng (O1)* vì rất nhiều người đã có chữ nhưng chỉ cần format đẹp và đúng template của trường.
+- **Success metric:** Số lượng report tạo thành công từ nội dung có sẵn; Không có lỗi bịa chữ (AI hallucination).
+- **Effort:** L. **Outcome:** O1, O2. **Dependency:** Độc lập với E1-E7. Được thiết kế chạy hoàn toàn qua các template tĩnh, không dùng LLM để generate nội dung.
+
 ### Prioritization snapshot (RICE-lite)
 
 | Epic | Reach | Impact | Confidence | Effort | Ưu tiên |
@@ -130,6 +137,7 @@ Mỗi epic = **hypothesis** + **success metric** + **effort (T-shirt: S/M/L/XL)*
 | E4 OCR công thức | Thấp–TB | TB–Cao | TB | M | **5** |
 | E6 Prompt Engineering | Cao | TB–Cao | Cao | M | **3 (cross-cutting, song song)** |
 | E7 Clarification Layer | TB | TB–Cao | Thấp | L | **6 (sau E6, cần eval data)** |
+| E8 Academic Formatter | Cao | Cao | Cao | L | **2 (nền tảng format)** |
 
 > **Strategic override:** E1 xếp trước dù effort L vì là *nền tảng* cho E2 và tài liệu lớn.
 > E5 được đẩy lên nhờ effort thấp + tác động activation nhanh (không phụ thuộc epic khác).

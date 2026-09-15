@@ -38,7 +38,8 @@ describe("RequestPlanSchema (E7 Task 2)", () => {
   });
 
   it("thiếu field bắt buộc (ambiguity) → bị từ chối", () => {
-    const { ambiguity, ...rest } = validPlan();
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { ambiguity: _ambiguity, ...rest } = validPlan();
     expect(() => RequestPlanSchema.parse(rest)).toThrow();
   });
 

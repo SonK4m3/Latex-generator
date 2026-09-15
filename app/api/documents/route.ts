@@ -188,7 +188,7 @@ export async function POST(request: Request): Promise<Response> {
 
   // Only the Supabase backend has the atomic, database-enforced daily quota.
   // The file backend remains usable for local/offline development.
-  if (cfg.storeBackend === "supabase") {
+  if (cfg.storeBackend === "supabase" && userId) {
     try {
       const quota = await consumeDailyGenerationQuota();
       if (!quota.allowed) {

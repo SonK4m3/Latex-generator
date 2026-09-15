@@ -6,13 +6,12 @@
 // máy dev không có Docker) — trả về GradingResult với score=0.5 (trung lập, không phải fail cứng)
 // và reason giải thích rõ, để người đọc report phân biệt được "compile thất bại thật" (score=0)
 // và "không gọi được compile-service" (score=0.5, không tính là regression).
-import type { AssertionValueFunctionContext, GradingResult } from "promptfoo";
+import type { GradingResult } from "promptfoo";
 import { compileLatex, CompileServiceError } from "@/lib/compile/client";
 import { getConfig } from "@/lib/config";
 
 export default async function compileSuccessScorer(
   output: string,
-  _context: AssertionValueFunctionContext,
 ): Promise<GradingResult> {
   const cfg = getConfig();
   try {

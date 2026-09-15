@@ -13,6 +13,15 @@ const supabaseKey =
 const PUBLIC_PREFIXES = ["/login", "/auth", "/api"];
 
 function isPublicPath(pathname: string): boolean {
+  if (
+    pathname === "/" ||
+    pathname === "/favicon.ico" ||
+    pathname === "/robots.txt" ||
+    pathname === "/sitemap.xml" ||
+    pathname === "/manifest.webmanifest"
+  ) {
+    return true;
+  }
   return PUBLIC_PREFIXES.some(
     (p) => pathname === p || pathname.startsWith(`${p}/`),
   );
@@ -57,6 +66,14 @@ export const updateSession = async (request: NextRequest) => {
       const url = request.nextUrl.clone();
       url.pathname = "/login";
       url.searchParams.set("redirectTo", pathname);
+      return NextResponse.redirect(url);
+    }
+    
+    // Redirect authenticated users away from the marketing landing page
+    // into the actual application workspace.
+    if (user && pathname === "/") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/app";
       return NextResponse.redirect(url);
     }
   } catch (err) {

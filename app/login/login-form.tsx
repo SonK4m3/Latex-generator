@@ -43,7 +43,7 @@ export default function LoginForm() {
     setError(null);
     setLoading(true);
     const { error } = await createClient().auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/reset-password`,
+      redirectTo: `${window.location.origin}/auth/callback?redirectTo=/auth/reset-password`,
     });
     setLoading(false);
     if (error) setError("Không thể gửi email đặt lại mật khẩu. Vui lòng thử lại.");

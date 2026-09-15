@@ -136,7 +136,8 @@ describe("DocumentList — TanStack Query (FE-1.2)", () => {
   it("huỷ confirm → KHÔNG gọi DELETE", async () => {
     const user = userEvent.setup();
     vi.spyOn(window, "confirm").mockReturnValue(false);
-    const fetchSpy = vi.fn(async () => jsonResponse({ documents: [] }));
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
+    const fetchSpy = vi.fn(async (..._args: any[]) => jsonResponse({ documents: [] }));
     vi.stubGlobal("fetch", fetchSpy);
 
     renderWithClient(<DocumentList initialDocuments={[doc({ id: "d1", title: "Giữ lại" })]} />);

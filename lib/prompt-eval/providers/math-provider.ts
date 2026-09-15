@@ -17,7 +17,6 @@
 // thực tế" đã áp dụng nhiều lần trong epic này).
 import type { ApiProvider, ProviderResponse } from "promptfoo";
 import { MockProvider } from "@/lib/ai/mock";
-import { renderTemplateLatex } from "@/lib/templates/registry";
 import type { GenerateInput } from "@/lib/ai/types";
 
 export type MathProviderVersion = "v1" | "v2";

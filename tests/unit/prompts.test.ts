@@ -344,7 +344,7 @@ describe("buildRawSourcesBlock", () => {
 describe("buildRetrievedSourcesBlock", () => {
   it("uses chunk XML tags with id and source attributes", () => {
     const b = buildRetrievedSourcesBlock([
-      { label: "S1", sourceName: "paper.pdf", text: "Nội dung nghiên cứu" },
+      { label: "S1", sourceName: "paper.pdf", text: "Nội dung nghiên cứu", score: 1, startOffset: 0 },
     ]);
     expect(b).toContain('<chunk id="S1" source="paper.pdf">');
     expect(b).toContain("Nội dung nghiên cứu");
@@ -353,7 +353,7 @@ describe("buildRetrievedSourcesBlock", () => {
 
   it("includes CITATIONS instruction with label rule", () => {
     const b = buildRetrievedSourcesBlock([
-      { label: "S2", sourceName: "ref.pdf", text: "data" },
+      { label: "S2", sourceName: "ref.pdf", text: "data", score: 1, startOffset: 0 },
     ]);
     expect(b).toContain("CITATIONS");
     expect(b).toContain("do NOT invent labels");
