@@ -1,7 +1,7 @@
 // tests/unit/document-list.test.tsx
 // FE-1.2: DocumentList qua TanStack Query — initialData hydration, delete → invalidate/refetch,
 // nút "Làm mới" → refetch. (Đặt trong tests/ vì vitest.config include chỉ gom tests/** + app/**.)
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithClient } from "@/tests/utils/react-query";
@@ -31,14 +31,7 @@ function jsonResponse(body: unknown): Response {
   });
 }
 
-beforeEach(() => {
-  // confirm() mặc định true (đồng ý xoá) — override từng test nếu cần.
-  vi.spyOn(window, "confirm").mockReturnValue(true);
-});
 afterEach(() => {
-  // KHÔNG dùng vi.unstubAllGlobals() ở đây: nó sẽ xoá luôn các stub global do tests/setup.ts đặt
-  // (IntersectionObserver/ResizeObserver — next/link prefetch cần) vì setup chỉ chạy 1 lần/đầu file.
-  // Mỗi test tự stub lại `fetch` (ghi đè); chỉ cần restore các spy (confirm).
   vi.restoreAllMocks();
 });
 
@@ -56,20 +49,20 @@ describe("DocumentList — TanStack Query (FE-1.2)", () => {
       />,
     );
 
-    // initialData hiển thị ngay, không gọi fetch khi mount (staleTime coi là tươi + initialData).
+    // initialData hiển thị ngay, không gọi fetch khi mount.
     expect(screen.getByText("Đơn file")).toBeInTheDocument();
     expect(screen.getByText("Dự án luận văn")).toBeInTheDocument();
-    expect(screen.getByText("Dự án nhiều file")).toBeInTheDocument(); // badge chỉ ở d2
+    // isProject badge shows "· Dự án" inline
+    expect(screen.getByText(/· Dự án/)).toBeInTheDocument();
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it("xoá → gọi DELETE rồi invalidate/refetch danh sách (item biến mất)", async () => {
+  it("xoá → inline confirm → gọi DELETE rồi invalidate/refetch (item biến mất)", async () => {
     const user = userEvent.setup();
     const calls: { url: string; method: string }[] = [];
     vi.stubGlobal("fetch", async (url: string, init?: RequestInit) => {
       calls.push({ url, method: init?.method ?? "GET" });
       if (init?.method === "DELETE") return jsonResponse({ ok: true });
-      // refetch sau invalidate: server giờ chỉ còn d2.
       return jsonResponse({ documents: [doc({ id: "d2", title: "Còn lại" })] });
     });
 
@@ -82,16 +75,18 @@ describe("DocumentList — TanStack Query (FE-1.2)", () => {
       />,
     );
 
+    // Click "Xoá" to show inline confirmation
     await user.click(screen.getByRole("button", { name: "Xoá Sẽ xoá" }));
 
-    // DELETE được gọi đúng id, rồi GET refetch danh sách.
+    // Then click "Xác nhận" to actually delete
+    await user.click(screen.getByRole("button", { name: "Xác nhận" }));
+
     await waitFor(() => {
       expect(calls.some((c) => c.method === "DELETE" && c.url.endsWith("/api/documents/d1"))).toBe(true);
     });
     await waitFor(() => {
       expect(calls.some((c) => c.method === "GET" && c.url.endsWith("/api/documents"))).toBe(true);
     });
-    // Sau refetch (invalidate), item đã xoá biến mất.
     await waitFor(() => {
       expect(screen.queryByText("Sẽ xoá")).not.toBeInTheDocument();
     });
@@ -127,21 +122,27 @@ describe("DocumentList — TanStack Query (FE-1.2)", () => {
     });
   });
 
-  it("danh sách rỗng → hiện 'Chưa có tài liệu nào'", () => {
+  it("danh sách rỗng → hiện EmptyState 'Chưa có tài liệu nào'", () => {
     vi.stubGlobal("fetch", vi.fn());
     renderWithClient(<DocumentList initialDocuments={[]} />);
-    expect(screen.getByText("Chưa có tài liệu nào.")).toBeInTheDocument();
+    expect(screen.getByText("Chưa có tài liệu nào")).toBeInTheDocument();
   });
 
-  it("huỷ confirm → KHÔNG gọi DELETE", async () => {
+  it("huỷ inline confirm → KHÔNG gọi DELETE", async () => {
     const user = userEvent.setup();
-    vi.spyOn(window, "confirm").mockReturnValue(false);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
-    const fetchSpy = vi.fn(async (..._args: any[]) => jsonResponse({ documents: [] }));
+    // vi.fn<typeof fetch> cho `mock.calls` kiểu đúng ([input, init?]) mà không
+    // cần khai báo tham số không dùng.
+    const fetchSpy = vi.fn<typeof fetch>(() =>
+      Promise.resolve(jsonResponse({ documents: [] }) as Response),
+    );
     vi.stubGlobal("fetch", fetchSpy);
 
     renderWithClient(<DocumentList initialDocuments={[doc({ id: "d1", title: "Giữ lại" })]} />);
+
+    // Click "Xoá" to show inline confirmation
     await user.click(screen.getByRole("button", { name: "Xoá Giữ lại" }));
+    // Then click "Huỷ" to cancel
+    await user.click(screen.getByRole("button", { name: "Huỷ" }));
 
     // Không có lời gọi DELETE nào.
     expect(fetchSpy.mock.calls.every((c) => (c[1] as RequestInit | undefined)?.method !== "DELETE")).toBe(true);

@@ -2,21 +2,27 @@
 
 import { useState } from "react";
 import type { ChatMessage } from "@/lib/types/document";
+import { PromptInput } from "@/components/agents/prompt-input";
+import { MessageScroller } from "@/components/agents/message-scroller";
+import { Message, MessageBubble, MessageBubbleContent, MessageContent, MessageAvatar } from "@/components/agents/message";
+import { AgentProgress } from "@/components/agents/loading-states/agent-progress";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 export default function ChatEditor({
   messages,
   onSend,
+  onCancel,
   busy,
 }: {
   messages: ChatMessage[];
   onSend: (instruction: string) => void;
+  onCancel?: () => void;
   busy?: boolean;
 }) {
   const [text, setText] = useState("");
 
-  function submit(e: React.FormEvent) {
-    e.preventDefault();
-    const t = text.trim();
+  function submit(promptValue: string) {
+    const t = promptValue.trim();
     if (!t || busy) return;
     onSend(t);
     setText("");
@@ -24,58 +30,70 @@ export default function ChatEditor({
 
   return (
     <div className="flex h-full flex-col gap-3">
-      <div className="flex-1 space-y-2 overflow-auto rounded border border-zinc-200 p-3 dark:border-zinc-800">
+      <MessageScroller
+        className="flex-1 space-y-4 overflow-auto rounded-lg border border-border bg-background px-4 py-4"
+        contentClassName="flex flex-col gap-4"
+      >
         {messages.length === 0 && (
-          <p className="text-sm text-zinc-500">
-            Nhập yêu cầu để chỉnh sửa tài liệu, ví dụ: “Thêm mục Kết luận”,
-            “Đổi tiêu đề thành ...”, “Viết lại phần giới thiệu ngắn gọn hơn”.
-          </p>
+          <div className="flex flex-col items-center justify-center gap-2 py-6 text-center">
+            <p className="text-sm font-medium text-foreground">Chỉnh sửa tài liệu bằng ngôn ngữ tự nhiên</p>
+            <p className="text-xs text-muted-foreground max-w-sm">
+              Hệ thống sẽ sửa mã LaTeX và biên dịch lại PDF tự động. Bạn không cần biết cú pháp LaTeX.
+            </p>
+            <ul className="mt-1 text-xs text-muted-foreground space-y-1 text-left">
+              <li>💬 &quot;Thêm mục Kết luận vào cuối tài liệu&quot;</li>
+              <li>💬 &quot;Đổi tiêu đề thành Báo cáo cuối kỳ&quot;</li>
+              <li>💬 &quot;Viết lại phần giới thiệu ngắn gọn hơn&quot;</li>
+            </ul>
+          </div>
         )}
+        
         {messages.map((m) => (
-          <div
-            key={m.id}
-            className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
-          >
-            <div
-              className={`max-w-[85%] whitespace-pre-wrap rounded-lg px-3 py-2 text-sm ${
-                m.role === "user"
-                  ? "bg-blue-600 text-white"
-                  : "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100"
-              }`}
-            >
-              {m.content}
-            </div>
-          </div>
+          <Message key={m.id} from={m.role === "user" ? "user" : "assistant"}>
+            {m.role === "assistant" && (
+              <MessageAvatar>
+                <Avatar className="w-8 h-8">
+                  <AvatarFallback className="text-xs">AI</AvatarFallback>
+                </Avatar>
+              </MessageAvatar>
+            )}
+            <MessageContent>
+              <MessageBubble variant={m.role === "user" ? "solid" : "soft"} className={m.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"}>
+                <MessageBubbleContent>{m.content}</MessageBubbleContent>
+              </MessageBubble>
+            </MessageContent>
+          </Message>
         ))}
+        
         {busy && (
-          <div className="flex justify-start">
-            <div className="rounded-lg bg-zinc-100 px-3 py-2 text-sm text-zinc-500 dark:bg-zinc-800">
-              Đang xử lý yêu cầu...
-            </div>
-          </div>
+          <Message from="assistant" animateIn>
+            <MessageAvatar>
+              <Avatar className="w-8 h-8">
+                <AvatarFallback className="text-xs">AI</AvatarFallback>
+              </Avatar>
+            </MessageAvatar>
+            <MessageContent>
+              <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground w-fit">
+                <AgentProgress label="Đang xử lý yêu cầu…" />
+              </div>
+            </MessageContent>
+          </Message>
         )}
-      </div>
+      </MessageScroller>
 
-      <form onSubmit={submit} className="flex flex-col gap-2">
-        <textarea
-          aria-label="Yêu cầu chỉnh sửa"
-          className="min-h-20 rounded border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
-          placeholder="Nhập yêu cầu chỉnh sửa..."
-          value={text}
-          disabled={busy}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submit(e);
-          }}
-        />
-        <button
-          type="submit"
-          disabled={busy || text.trim().length === 0}
-          className="self-end rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-        >
-          {busy ? "Đang gửi..." : "Gửi (⌘/Ctrl + Enter)"}
-        </button>
-      </form>
+      <PromptInput
+        value={text}
+        onValueChange={setText}
+        disabled={busy}
+        loading={busy}
+        onStop={onCancel}
+        onSubmit={submit}
+        sendLabel="Gửi yêu cầu chỉnh sửa"
+        stopLabel="Huỷ yêu cầu"
+        placeholder="Nhập yêu cầu chỉnh sửa (Ví dụ: Đổi tiêu đề thành Báo cáo)..."
+        className="min-h-16"
+        aria-label="Yêu cầu chỉnh sửa"
+      />
     </div>
   );
 }

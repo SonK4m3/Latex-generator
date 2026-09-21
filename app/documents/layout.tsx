@@ -1,6 +1,7 @@
 import Link from "next/link";
-import AuthStatus from "@/components/AuthStatus";
+import AuthStatusClient from "@/components/AuthStatusClient";
 import { ThemeToggle } from "@/components/theme-toggle";
+import AppCommandPalette from "@/components/AppCommandPalette";
 
 // Same Compile Room chrome as app/app/layout.tsx — a single document's
 // workspace is part of the tool, not the marketing surface.
@@ -16,11 +17,14 @@ export default function DocumentsLayout({
           AI LaTeX Generator
         </Link>
         <div className="flex items-center gap-4">
-          <AuthStatus />
+          <AuthStatusClient />
           <ThemeToggle />
         </div>
       </header>
       {children}
+
+      {/* ⌘K — cùng palette như khu làm việc, để không phải quay về /app để tìm. */}
+      <AppCommandPalette />
     </div>
   );
 }

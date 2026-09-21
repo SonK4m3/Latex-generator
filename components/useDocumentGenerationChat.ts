@@ -14,7 +14,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { DOCUMENTS_QUERY_KEY } from "@/lib/query-keys";
 import type { InputFormat, SourceFile, TemplateId } from "@/lib/types/document";
 
-export type ChatItemStatus = "streaming" | "done" | "error" | "awaiting_clarification";
+export type ChatItemStatus = "streaming" | "done" | "error" | "awaiting_clarification" | "planned";
 
 /** Trạng thái bước hiện tại khi đang streaming — khớp StepStatus (lib/orchestrator/document.ts),
  *  nhận qua SSE event `status`. Cho phép hiện "đang phân tích / đang sinh / đang biên dịch / đang
@@ -24,7 +24,8 @@ export type StepStatus =
   | { step: "analyzing" }
   | { step: "generating" }
   | { step: "compiling" }
-  | { step: "repairing"; attempt: number; errorType: string };
+  | { step: "repairing"; attempt: number; errorType: string }
+  | { step: "planned"; planContent: string; docId: string };
 
 /** Một câu hỏi cần hỏi lại người dùng trước khi tiếp tục generate (E7). Khớp với
  *  PendingQuestion (lib/clarification/policy.ts) — payload thật gửi qua SSE event
@@ -63,6 +64,8 @@ export interface ChatItem {
   clarification?: { jobId: string; questions: ClarificationQuestion[] };
   /** Bước hiện tại của quy trình sinh/tự sửa (chỉ có ý nghĩa khi status === "streaming"). */
   stepStatus?: StepStatus;
+  /** Nội dung dàn ý để chỉnh sửa (khi status === "planned"). */
+  planContent?: string;
 }
 
 let idCounter = 0;
@@ -154,11 +157,18 @@ export function useDocumentGenerationChat() {
               acc += data.text;
               patch({ streamedLatex: acc });
             } else if (data.step) {
-              // Status event từ orchestrator (StepStatus) — luôn append theo dòng, KHÔNG dùng
-              // event "status" cũ ({status:"understanding"/"compiling"}) để tránh nhầm 2 payload
-              // shape khác nhau trên cùng 1 field; phân biệt bằng key `step` (StepStatus) vs
-              // `status` (payload cũ, giữ tương thích với maybeClarify's "understanding").
-              patch({ stepStatus: data as StepStatus });
+              // Status event từ orchestrator (StepStatus)
+              if (data.step === "planned") {
+                settled = true;
+                patch({
+                  status: "planned",
+                  planContent: data.planContent,
+                  docId: data.docId,
+                  stepStatus: data as StepStatus,
+                });
+              } else {
+                patch({ stepStatus: data as StepStatus });
+              }
             } else if (data.status === "understanding") {
               patch({ stepStatus: { step: "understanding" } });
             } else if (data.doc) {
@@ -299,5 +309,58 @@ export function useDocumentGenerationChat() {
     [runSSERequest],
   );
 
-  return { items, busy, send, reset, answerClarification };
+  const approvePlan = useCallback(
+    async (botId: string, docId: string, finalPlan: string) => {
+      // API call is handled by PlanEditor, we just need to resume streaming state on frontend
+      setItems((prev) =>
+        prev.map((it) =>
+          it.id === botId ? { ...it, status: "streaming", stepStatus: { step: "generating" } } : it,
+        ),
+      );
+      // Logic to actually trigger next step stream from server goes here
+      // Ideally PlanEditor API response kicks off a server-side process 
+      // or we send a new SSE request like answerClarification
+      
+      const controller = new AbortController();
+      abortRef.current = controller;
+
+      try {
+        await runSSERequest(
+          botId,
+          `/api/documents/${docId}/generate`,
+          { planContent: finalPlan },
+          controller.signal,
+        );
+      } catch (e) {
+        if ((e as Error)?.name === "AbortError") return;
+        setItems((prev) =>
+          prev.map((it) =>
+            it.id === botId
+              ? { ...it, status: "error", error: "Không kết nối được máy chủ. Vui lòng thử lại." }
+              : it,
+          ),
+        );
+      } finally {
+        abortRef.current = null;
+      }
+    },
+    [runSSERequest],
+  );
+
+  const cancel = useCallback(() => {
+    if (!abortRef.current) return;
+    abortRef.current.abort();
+    abortRef.current = null;
+    setBusy(false);
+    // Mark any streaming items as cancelled
+    setItems((prev) =>
+      prev.map((it) =>
+        it.status === "streaming"
+          ? { ...it, status: "error", error: "Đã huỷ yêu cầu." }
+          : it,
+      ),
+    );
+  }, []);
+
+  return { items, busy, send, reset, cancel, answerClarification, approvePlan };
 }

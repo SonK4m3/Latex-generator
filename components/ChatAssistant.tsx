@@ -1,10 +1,8 @@
 "use client";
 
-// Trợ lý AI Chat cho trang chủ: soạn yêu cầu bằng ngôn ngữ tự nhiên, chọn dạng
-// tài liệu qua Menubar, và xem hội thoại/stream trong MessageScroller.
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { PaperclipIcon, PlusIcon, SendHorizontalIcon, SparklesIcon, XIcon } from "lucide-react";
+import { FileTextIcon, PaperclipIcon, PlusIcon, SendHorizontalIcon, SparklesIcon, XIcon } from "lucide-react";
 import MarkdownIt from "markdown-it";
 
 import type { TemplateId } from "@/lib/types/document";
@@ -13,36 +11,10 @@ import { useDocumentGenerationChat } from "@/components/useDocumentGenerationCha
 import { SOURCE_ACCEPT, extOf, isTextLike, filesToSources } from "@/components/source-upload";
 import ChatMessageItem from "@/components/ChatMessageItem";
 
-import {
-  Menubar,
-  MenubarContent,
-  MenubarItem,
-  MenubarLabel,
-  MenubarMenu,
-  MenubarRadioGroup,
-  MenubarRadioItem,
-  MenubarSeparator,
-  MenubarTrigger,
-} from "@/components/ui/menubar";
-import {
-  MessageScroller,
-  MessageScrollerButton,
-  MessageScrollerContent,
-  MessageScrollerItem,
-  MessageScrollerProvider,
-  MessageScrollerViewport,
-} from "@/components/ui/message-scroller";
-import { Marker, MarkerContent } from "@/components/ui/marker";
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupButton,
-  InputGroupText,
-  InputGroupTextarea,
-} from "@/components/ui/input-group";
-import { Spinner } from "@/components/ui/spinner";
+import { PromptInput } from "@/components/agents/prompt-input";
+import { MessageScroller } from "@/components/agents/message-scroller";
+import { Button } from "@/components/ui/button";
 
-/** Gom template theo category, giữ thứ tự khai báo (dùng cho menu chọn dạng). */
 function groupedTemplates() {
   const groups: { category: string; items: ReturnType<typeof listTemplates> }[] = [];
   for (const t of listTemplates()) {
@@ -56,24 +28,24 @@ function groupedTemplates() {
   return groups;
 }
 
-// Preview MD→HTML ở client (html:false → an toàn, không cho raw HTML nhúng).
-// LƯU Ý: preview HTML KHÁC với kết quả LaTeX cuối (chỉ để soạn thảo).
 const previewMd = new MarkdownIt({ html: false, linkify: false, typographer: false });
-
-// Nhóm template chỉ phụ thuộc listTemplates() (tĩnh) → tính MỘT LẦN ở module scope, không tính lại
-// mỗi lần render.
 const TEMPLATE_GROUPS = groupedTemplates();
+
+const PROMPT_MODELS = TEMPLATE_GROUPS.flatMap((g) =>
+  g.items.map((t) => ({
+    value: t.id,
+    label: t.label,
+    icon: <FileTextIcon className="w-4 h-4" />,
+  }))
+);
 
 export default function ChatAssistant({
   onPreview,
 }: {
-  /** Gọi khi người dùng chọn xem 1 item trong chat (thay cho navigate sang route khác) — cho phép
-   *  HomeClient render preview ngay trong cùng màn hình. Nhận cả item (đủ streamedLatex/docId) để
-   *  panel bên phải luôn khớp đúng lượt chat đang xem, không chỉ 1 docId trơ. */
   onPreview?: (item: import("@/components/useDocumentGenerationChat").ChatItem) => void;
 }) {
   const router = useRouter();
-  const { items, busy, send, reset, answerClarification } = useDocumentGenerationChat();
+  const { items, busy, send, reset, cancel, answerClarification, approvePlan } = useDocumentGenerationChat();
   const [template, setTemplate] = useState<TemplateId>("academic");
   const [text, setText] = useState("");
   const [markdownMode, setMarkdownMode] = useState(false);
@@ -84,16 +56,8 @@ export default function ChatAssistant({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const active = getTemplate(template);
-  // Cho gửi khi: có nội dung text, HOẶC (nhánh natural) có tệp đính kèm.
-  const canSend =
-    !busy &&
-    !preparing &&
-    (text.trim().length > 0 || (!markdownMode && files.length > 0));
+  const canSend = !busy && !preparing && (text.trim().length > 0 || (!markdownMode && files.length > 0));
 
-  // Tự động đưa preview lên panel bên phải ngay khi có kết quả — phản hồi trực tiếp phản hồi
-  // dogfood "phải đợi gen ra hết rồi mới được xem" + "phải vào route chi tiết": không cần bấm
-  // "Mở tài liệu" nữa, panel tự cập nhật theo LƯỢT CHAT MỚI NHẤT đã hoàn tất (done), kể cả khi
-  // biên dịch thất bại (vẫn muốn xem log/mã nguồn ngay, không chỉ khi thành công).
   const lastCompletedIdRef = useRef<string | null>(null);
   useEffect(() => {
     if (!onPreview) return;
@@ -103,6 +67,17 @@ export default function ChatAssistant({
       onPreview(lastDone);
     }
   }, [items, onPreview]);
+
+  useEffect(() => {
+    const handlePlanApproved = (e: Event) => {
+      const customEvent = e as CustomEvent<{ botId: string; docId: string; plan: string }>;
+      const { botId, docId, plan } = customEvent.detail;
+      approvePlan(botId, docId, plan);
+    };
+
+    window.addEventListener("plan-approved", handlePlanApproved);
+    return () => window.removeEventListener("plan-approved", handlePlanApproved);
+  }, [approvePlan]);
 
   const previewHtml = useMemo(
     () => (markdownMode && showPreview ? previewMd.render(text) : ""),
@@ -116,25 +91,24 @@ export default function ChatAssistant({
       for (const f of picked) map.set(f.name, f);
       return [...map.values()];
     });
-    e.target.value = ""; // cho phép chọn lại cùng file
+    e.target.value = "";
   }
 
   function removeFile(name: string) {
     setFiles((prev) => prev.filter((f) => f.name !== name));
   }
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!canSend) return;
+  async function submit(promptValue: string, selectedModel?: string) {
+    if (!canSend && !promptValue) return;
 
-    // Markdown không dùng file nguồn (converter tất định) → gửi ngay.
+    const currentTemplate = (selectedModel as TemplateId) || template;
+
     if (markdownMode) {
-      send(text, template, "markdown");
+      send(promptValue, currentTemplate, "markdown");
       setText("");
       return;
     }
 
-    // Natural: trích xuất file (nếu có) → sources rồi gửi.
     setExtractError(undefined);
     let sources: { name: string; content: string }[] = [];
     if (files.length > 0) {
@@ -146,104 +120,47 @@ export default function ChatAssistant({
       } finally {
         setPreparing(false);
       }
-      // Mọi file đều lỗi và không có mô tả → dừng.
-      if (sources.length === 0 && text.trim().length === 0) return;
+      if (sources.length === 0 && promptValue.trim().length === 0) return;
     }
 
-    send(text, template, "natural", sources);
+    send(promptValue, currentTemplate, "natural", sources);
     setText("");
     setFiles([]);
   }
 
   return (
-    <section className="flex h-[78vh] min-h-[520px] flex-col gap-3 rounded-xl border bg-card p-3 text-card-foreground shadow-sm">
+    <section className="flex h-full min-h-[520px] flex-col gap-3 rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-sm">
       <header className="flex flex-wrap items-center justify-between gap-2">
-        <Menubar>
-          <MenubarMenu>
-            <MenubarTrigger>
-              <SparklesIcon />
-              Trợ lý
-            </MenubarTrigger>
-            <MenubarContent>
-              <MenubarItem onClick={reset}>
-                <PlusIcon />
-                Hội thoại mới
-              </MenubarItem>
-            </MenubarContent>
-          </MenubarMenu>
-
-          <MenubarMenu>
-            <MenubarTrigger>Dạng tài liệu</MenubarTrigger>
-            <MenubarContent className="max-h-[70vh] overflow-y-auto">
-              <MenubarRadioGroup
-                value={template}
-                onValueChange={(v) => setTemplate(v as TemplateId)}
-              >
-                <MenubarLabel>Chọn dạng tài liệu</MenubarLabel>
-                {TEMPLATE_GROUPS.map((g) => (
-                  <Fragment key={g.category}>
-                    <MenubarSeparator />
-                    <MenubarLabel inset className="text-xs font-normal text-muted-foreground">
-                      {g.category}
-                    </MenubarLabel>
-                    {g.items.map((t) => (
-                      <MenubarRadioItem key={t.id} value={t.id}>
-                        {t.label}
-                      </MenubarRadioItem>
-                    ))}
-                  </Fragment>
-                ))}
-              </MenubarRadioGroup>
-            </MenubarContent>
-          </MenubarMenu>
-        </Menubar>
-
+        <Button variant="ghost" size="sm" onClick={reset}>
+          <PlusIcon className="mr-2 h-4 w-4" />
+          Hội thoại mới
+        </Button>
         <span className="truncate text-xs text-muted-foreground" title={active?.description ?? ""}>
           Đang chọn: <span className="font-medium text-foreground">{active?.label ?? ""}</span>
         </span>
       </header>
 
-      <MessageScrollerProvider autoScroll scrollPreviousItemPeek={48}>
-        <MessageScroller className="flex-1 min-h-0 rounded-lg border bg-background">
-          <MessageScrollerViewport className="px-4">
-            <MessageScrollerContent className="py-4">
-              <MessageScrollerItem messageId="intro-separator">
-                <Marker variant="separator">
-                  <MarkerContent>Trợ lý AI LaTeX</MarkerContent>
-                </Marker>
-              </MessageScrollerItem>
-              {items.map((item) => (
-                <MessageScrollerItem
-                  key={item.id}
-                  messageId={item.id}
-                  scrollAnchor={item.role === "user"}
-                >
-                  <ChatMessageItem
-                    item={item}
-                    onOpen={(docId) =>
-                      onPreview ? onPreview(item) : router.push(`/documents/${docId}`)
-                    }
-                    onOpenFull={() => router.push(`/documents/${item.docId}`)}
-                    onAnswerClarification={answerClarification}
-                  />
-                </MessageScrollerItem>
-              ))}
-            </MessageScrollerContent>
-          </MessageScrollerViewport>
-          <MessageScrollerButton />
-        </MessageScroller>
-      </MessageScrollerProvider>
+      <MessageScroller className="flex-1 min-h-0 rounded-lg border bg-background" contentClassName="px-4 py-4 mb-8">
+        <div className="flex flex-col gap-4">
+          {items.map((item) => (
+            <ChatMessageItem
+              key={item.id}
+              item={item}
+              onOpen={(docId) => onPreview ? onPreview(item) : router.push(`/documents/${docId}`)}
+              onOpenFull={() => router.push(`/documents/${item.docId}`)}
+              onAnswerClarification={answerClarification}
+            />
+          ))}
+        </div>
+      </MessageScroller>
 
-      <form onSubmit={submit}>
+      <div className="flex flex-col gap-2">
         {markdownMode && showPreview && (
-          <div className="mb-2 max-h-48 overflow-auto rounded-lg border bg-background p-3 text-sm">
-            <div className="mb-1 text-xs text-muted-foreground">
-              Xem trước Markdown (chỉ để soạn thảo — kết quả LaTeX có thể khác)
-            </div>
+          <div className="max-h-48 overflow-auto rounded-lg border bg-background p-3 text-sm">
+            <div className="mb-1 text-xs text-muted-foreground">Xem trước Markdown</div>
             {text.trim() ? (
               <div
                 className="prose prose-sm max-w-none dark:prose-invert"
-                // Nội dung do người dùng nhập; markdown-it cấu hình html:false nên không chèn raw HTML.
                 dangerouslySetInnerHTML={{ __html: previewHtml }}
               />
             ) : (
@@ -252,25 +169,12 @@ export default function ChatAssistant({
           </div>
         )}
         {!markdownMode && files.length > 0 && (
-          <ul className="mb-2 flex flex-wrap gap-1">
+          <ul className="flex flex-wrap gap-1">
             {files.map((f) => (
-              <li
-                key={f.name}
-                className="flex items-center gap-1 rounded bg-muted px-2 py-1 text-xs"
-              >
-                <span className="max-w-[16rem] truncate">
-                  {f.name}
-                  <span className="ml-1 text-muted-foreground">
-                    ({isTextLike(f.name)
-                      ? "text"
-                      : extOf(f.name) === "pdf" || extOf(f.name) === "docx"
-                        ? "trích xuất"
-                        : "OCR"})
-                  </span>
-                </span>
+              <li key={f.name} className="flex items-center gap-1 rounded bg-muted px-2 py-1 text-xs">
+                <span className="max-w-[16rem] truncate">{f.name}</span>
                 <button
                   type="button"
-                  aria-label={`Xoá ${f.name}`}
                   className="text-red-600"
                   disabled={busy || preparing}
                   onClick={() => removeFile(f.name)}
@@ -282,7 +186,7 @@ export default function ChatAssistant({
           </ul>
         )}
         {extractError && (
-          <p role="alert" className="mb-2 text-xs text-amber-600">
+          <p role="alert" className="text-xs text-amber-600">
             {extractError}
           </p>
         )}
@@ -294,74 +198,44 @@ export default function ChatAssistant({
           className="hidden"
           onChange={onFilesChange}
         />
-        <InputGroup>
-          <InputGroupTextarea
-            aria-label={markdownMode ? "Nội dung Markdown" : "Mô tả tài liệu"}
-            placeholder={
-              markdownMode
-                ? "Soạn Markdown (heading, list, bảng, code, $công thức$)… Enter để tạo, Shift+Enter xuống dòng"
-                : "Mô tả tài liệu bạn muốn tạo… (Enter để gửi, Shift+Enter xuống dòng)"
-            }
-            value={text}
-            disabled={busy || preparing}
-            rows={markdownMode ? 6 : 2}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                submit(e);
-              }
-            }}
-          />
-          <InputGroupAddon align="block-end">
-            <InputGroupText className="text-xs">{active.label}</InputGroupText>
-            {!markdownMode && (
-              <InputGroupButton
-                type="button"
-                size="sm"
-                variant="outline"
-                disabled={busy || preparing}
-                onClick={() => fileInputRef.current?.click()}
-                title="Đính kèm file nguồn (.txt/.md/.tex/.csv/.json, .pdf, .docx, ảnh)"
-              >
-                <PaperclipIcon data-icon="inline-start" />
-                Đính kèm
-              </InputGroupButton>
-            )}
-            <label className="ml-2 flex items-center gap-1 text-xs text-muted-foreground">
-              <input
-                type="checkbox"
-                aria-label="Chế độ Markdown"
-                checked={markdownMode}
-                disabled={busy || preparing}
-                onChange={(e) => setMarkdownMode(e.target.checked)}
-              />
-              Markdown
-            </label>
-            {markdownMode && (
-              <InputGroupButton
-                type="button"
-                size="sm"
-                variant="outline"
-                disabled={busy}
-                onClick={() => setShowPreview((v) => !v)}
-              >
-                {showPreview ? "Ẩn xem trước" : "Xem trước"}
-              </InputGroupButton>
-            )}
-            <InputGroupButton
-              type="submit"
-              size="sm"
-              variant="default"
-              disabled={!canSend}
-              className="ml-auto"
-            >
-              {busy || preparing ? <Spinner /> : <SendHorizontalIcon data-icon="inline-start" />}
-              {preparing ? "Đang đọc tệp…" : busy ? "Đang tạo…" : markdownMode ? "Tạo" : "Gửi"}
-            </InputGroupButton>
-          </InputGroupAddon>
-        </InputGroup>
-      </form>
+        
+        <PromptInput
+          aria-label="Mô tả tài liệu"
+          value={text}
+          onValueChange={setText}
+          disabled={busy || preparing}
+          loading={busy || preparing}
+          onStop={cancel}
+          models={PROMPT_MODELS}
+          model={template}
+          onModelChange={(m) => setTemplate(m as TemplateId)}
+          actions={[
+            {
+              value: "attach",
+              label: "Đính kèm file",
+              icon: <PaperclipIcon className="w-4 h-4" />,
+            },
+            {
+              value: "toggle-markdown",
+              label: markdownMode ? "Tắt Markdown" : "Bật Markdown",
+              icon: <FileTextIcon className="w-4 h-4" />,
+            },
+            ...(markdownMode ? [{
+              value: "toggle-preview",
+              label: showPreview ? "Ẩn xem trước" : "Xem trước Markdown",
+            }] : []),
+          ]}
+          onAction={(action) => {
+            if (action === "attach") fileInputRef.current?.click();
+            if (action === "toggle-markdown") setMarkdownMode(!markdownMode);
+            if (action === "toggle-preview") setShowPreview(!showPreview);
+          }}
+          onSubmit={submit}
+          sendLabel="Gửi yêu cầu tạo tài liệu"
+          stopLabel="Huỷ tạo tài liệu"
+          placeholder={markdownMode ? "Soạn Markdown..." : "Mô tả tài liệu bạn muốn tạo..."}
+        />
+      </div>
     </section>
   );
 }

@@ -52,4 +52,14 @@ if (typeof window !== "undefined") {
       elementProto[method] = noop;
     }
   }
+
+  // jsdom không có Object URL API. PdfPreview dựng blob URL cho <iframe>, nên
+  // bất kỳ test nào render tab PDF sẽ ném "URL.createObjectURL is not a
+  // function" nếu không có stub này.
+  if (typeof URL.createObjectURL !== "function") {
+    URL.createObjectURL = () => "blob:mock";
+  }
+  if (typeof URL.revokeObjectURL !== "function") {
+    URL.revokeObjectURL = noop;
+  }
 }

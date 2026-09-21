@@ -1,6 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { renderWithClient } from "@/tests/utils/react-query";
 
 import ChatAssistant from "@/components/ChatAssistant";
@@ -27,28 +26,46 @@ vi.mock("next/navigation", () => ({
   }),
 }));
 
+// Trước đây bộ test này mô tả một UI cũ (Menubar chọn "Dạng tài liệu", lời chào
+// "Xin chào"). Khung soạn tin hiện dựng trên beUI PromptInput: template chọn qua
+// model selector của PromptInput, không còn menubar riêng.
 describe("ChatAssistant (Trợ lý AI Chat trang chủ)", () => {
-  it("render được toàn bộ trợ lý (MessageScroller + lời chào) mà không lỗi", () => {
+  it("render được khung soạn tin và thông tin template đang chọn", () => {
     renderWithClient(<ChatAssistant />);
-    expect(screen.getByText(/Xin chào/)).toBeInTheDocument();
+
     expect(screen.getByLabelText("Mô tả tài liệu")).toBeInTheDocument();
-    expect(screen.getByText("Dạng tài liệu")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Hội thoại mới/ }),
+    ).toBeInTheDocument();
+    // Template mặc định là "academic".
+    expect(screen.getByText(/Đang chọn:/)).toBeInTheDocument();
   });
 
-  it("mở menu “Dạng tài liệu” hiển thị nhãn + template mà không lỗi MenuGroupContext", async () => {
+  it("nút gửi có nhãn tiếng Việt và bị chặn khi chưa nhập gì", () => {
+    renderWithClient(<ChatAssistant />);
+
+    const send = screen.getByRole("button", {
+      name: "Gửi yêu cầu tạo tài liệu",
+    });
+    expect(send).toBeDisabled();
+  });
+
+  it("gõ nội dung thì mở được nút gửi", async () => {
+    const { default: userEvent } = await import("@testing-library/user-event");
     const user = userEvent.setup();
     renderWithClient(<ChatAssistant />);
-    await user.click(screen.getByText("Dạng tài liệu"));
-    expect(await screen.findByText("Chọn dạng tài liệu")).toBeInTheDocument();
-    // Một template bất kỳ trong radio group cũng phải render.
-    expect(await screen.findByText("Trình chiếu (Beamer)")).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText("Mô tả tài liệu"), "Một bài báo");
+    expect(
+      screen.getByRole("button", { name: "Gửi yêu cầu tạo tài liệu" }),
+    ).toBeEnabled();
   });
 });
 
 describe("Menubar template picker — regression MenuGroupContext", () => {
   it("MenubarLabel nằm trong MenubarRadioGroup thì render không ném lỗi", () => {
-    // Tái hiện đúng cấu trúc menu đã sửa: label + separator + radio item đều
-    // nằm TRONG MenubarRadioGroup (cung cấp MenuGroupContext cho GroupLabel).
+    // Giữ lại: đây là regression test cho MenuGroupContext của Menubar, vẫn có
+    // giá trị độc lập với việc ChatAssistant còn dùng menubar hay không.
     render(
       <Menubar>
         <MenubarMenu defaultOpen>

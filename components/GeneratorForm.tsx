@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import type { TemplateId, SourceFile } from "@/lib/types/document";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Spinner } from "@/components/ui/spinner";
 import TemplateSelect from "@/components/TemplateSelect";
 
 export interface GeneratorFormValues {
@@ -106,11 +109,11 @@ export default function GeneratorForm({
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <TemplateSelect value={template} onChange={setTemplate} disabled={disabled} />
       <label className="flex flex-col gap-1 text-sm">
-        <span className="font-medium">Mô tả tài liệu</span>
-        <textarea
-          aria-label="Mô tả tài liệu"
-          className="min-h-40 rounded border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
-          placeholder="Mô tả tài liệu, hoặc tải lên file nguồn để tổng hợp thành báo cáo..."
+        <span className="font-medium">{template === "cv" ? "Job Description (JD)" : "Mô tả tài liệu"}</span>
+        <Textarea
+          aria-label={template === "cv" ? "Job Description" : "Mô tả tài liệu"}
+          className="min-h-40"
+          placeholder={template === "cv" ? "Dán nội dung JD (Job Description) vào đây..." : "Mô tả tài liệu, hoặc tải lên file nguồn để tổng hợp thành báo cáo..."}
           value={description}
           disabled={disabled}
           onChange={(e) => setDescription(e.target.value)}
@@ -119,7 +122,7 @@ export default function GeneratorForm({
 
       <div className="flex flex-col gap-1 text-sm">
         <span className="font-medium">
-          File nguồn (tuỳ chọn) — .txt/.md/.tex/.csv/.json, .pdf, .docx, ảnh (OCR)
+          {template === "cv" ? "Upload CV cũ (PDF/Word)" : "File nguồn (tuỳ chọn) — .txt/.md/.tex/.csv/.json, .pdf, .docx, ảnh (OCR)"}
         </span>
         <input
           type="file"
@@ -130,20 +133,20 @@ export default function GeneratorForm({
           onChange={onFilesChange}
           className="text-sm"
         />
-        <span className="text-xs text-zinc-500">
-          PDF/DOCX được trích xuất văn bản; ảnh (.png/.jpg…) được OCR trên máy chủ.
+        <span className="text-xs text-muted-foreground">
+          {template === "cv" ? "Hệ thống sẽ bóc tách CV cũ và viết lại dựa trên JD." : "PDF/DOCX được trích xuất văn bản; ảnh (.png/.jpg…) được OCR trên máy chủ."}
         </span>
         {files.length > 0 && (
           <ul className="mt-1 flex flex-col gap-1">
             {files.map((f) => (
               <li
                 key={f.name}
-                className="flex items-center justify-between rounded bg-zinc-100 px-2 py-1 text-xs dark:bg-zinc-800"
+                className="flex items-center justify-between rounded bg-muted px-2 py-1 text-xs"
               >
                 <span className="truncate">
                   {f.name}
                   {!isTextLike(f.name) && (
-                    <span className="ml-1 text-zinc-500">
+                    <span className="ml-1 text-muted-foreground">
                       ({extOf(f.name) === "pdf" || extOf(f.name) === "docx" ? "trích xuất" : "OCR"})
                     </span>
                   )}
@@ -152,7 +155,7 @@ export default function GeneratorForm({
                   type="button"
                   onClick={() => removeFile(f.name)}
                   disabled={disabled}
-                  className="ml-2 text-red-600"
+                  className="ml-2 text-destructive"
                   aria-label={`Xoá ${f.name}`}
                 >
                   ✕
@@ -173,13 +176,13 @@ export default function GeneratorForm({
           Vui lòng nhập mô tả hoặc tải lên ít nhất một file nguồn.
         </p>
       )}
-      <button
+      <Button
         type="submit"
+        variant="default"
         disabled={disabled}
-        className="rounded bg-blue-600 px-4 py-2 font-medium text-white disabled:opacity-50"
       >
-        {preparing ? "Đang trích xuất tệp..." : busy ? "Đang xử lý..." : "Tạo tài liệu"}
-      </button>
+        {preparing ? <><Spinner className="size-3" /> Đang trích xuất tệp...</> : busy ? <><Spinner className="size-3" /> Đang xử lý...</> : "Tạo tài liệu"}
+      </Button>
     </form>
   );
 }

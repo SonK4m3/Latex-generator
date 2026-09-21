@@ -1,5 +1,5 @@
 import Link from "next/link";
-import AuthStatus from "@/components/AuthStatus";
+import AuthStatusClient from "@/components/AuthStatusClient";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 // Same Compile Room chrome as app/app/layout.tsx — login is a pre-auth step
@@ -16,7 +16,7 @@ export default function LoginLayout({
           AI LaTeX Generator
         </Link>
         <div className="flex items-center gap-4">
-          <AuthStatus />
+          <AuthStatusClient />
           <ThemeToggle />
         </div>
       </header>

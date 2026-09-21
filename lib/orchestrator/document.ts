@@ -8,6 +8,7 @@ import type {
   EditRequest,
   TemplateId,
 } from "@/lib/types/document";
+import { isDocumentError } from "@/lib/types/document";
 import type {
   SourceFile,
   RetrievedChunk,
@@ -566,6 +567,77 @@ export async function handleAnalyze(
   return { nextStatus: "CLARIFYING" };
 }
 
+import { cvSchema, type CVData } from "@/lib/schema/cv";
+
+function compileCVLatex(cvData: CVData): string {
+  const parts: string[] = [];
+  
+  parts.push(`\\cvheader{${cvData.header.name}}{${cvData.header.phone}}{${cvData.header.email}}{${cvData.header.link}}`);
+  
+  if (cvData.summary) {
+    parts.push(`\\cvsection{MỤC TIÊU NGHỀ NGHIỆP}`);
+    parts.push(cvData.summary);
+    parts.push("");
+  }
+  
+  if (cvData.education && cvData.education.length > 0) {
+    parts.push(`\\cvsection{HỌC VẤN}`);
+    for (const edu of cvData.education) {
+      parts.push(`\\cvexperience{${edu.company}}{${edu.role}}{${edu.date}}`);
+      if (edu.bullets && edu.bullets.length > 0) {
+        parts.push(`\\begin{itemize}`);
+        for (const b of edu.bullets) {
+          parts.push(`\\item ${b}`);
+        }
+        parts.push(`\\end{itemize}`);
+      }
+    }
+    parts.push("");
+  }
+
+  if (cvData.experience && cvData.experience.length > 0) {
+    parts.push(`\\cvsection{KINH NGHIỆM LÀM VIỆC}`);
+    for (const exp of cvData.experience) {
+      parts.push(`\\cvexperience{${exp.company}}{${exp.role}}{${exp.date}}`);
+      if (exp.bullets && exp.bullets.length > 0) {
+        parts.push(`\\begin{itemize}`);
+        for (const b of exp.bullets) {
+          parts.push(`\\item ${b}`);
+        }
+        parts.push(`\\end{itemize}`);
+      }
+    }
+    parts.push("");
+  }
+
+  if (cvData.projects && cvData.projects.length > 0) {
+    parts.push(`\\cvsection{DỰ ÁN CÁ NHÂN}`);
+    for (const proj of cvData.projects) {
+      parts.push(`\\cvproject{${proj.name}}{${proj.date}}`);
+      if (proj.bullets && proj.bullets.length > 0) {
+        parts.push(`\\begin{itemize}`);
+        for (const b of proj.bullets) {
+          parts.push(`\\item ${b}`);
+        }
+        parts.push(`\\end{itemize}`);
+      }
+    }
+    parts.push("");
+  }
+
+  if (cvData.skills && cvData.skills.length > 0) {
+    parts.push(`\\cvsection{KỸ NĂNG}`);
+    parts.push(`\\begin{itemize}`);
+    for (const s of cvData.skills) {
+      parts.push(`\\item ${s}`);
+    }
+    parts.push(`\\end{itemize}`);
+    parts.push("");
+  }
+
+  return parts.join("\n");
+}
+
 /**
  * Bước 3: Lên dàn ý (Plan)
  * Sinh ra dàn ý bằng tiếng Việt/Anh để người dùng duyệt trước khi sinh LaTeX.
@@ -574,6 +646,29 @@ export async function handlePlan(
   req: DocumentRequest,
   deps: OrchestratorDeps
 ): Promise<StateMachineResult> {
+  if (req.template === "cv") {
+    const planPrompt = `Hãy đóng vai một chuyên gia Nhân sự (ATS Optimizer).
+Dưới đây là JD (Job Description) và Nội dung CV cũ của ứng viên (Text) nếu có, hoặc chỉ là mô tả text của người dùng.
+Vui lòng phân tích và viết lại CV (bullet points) sao cho phù hợp nhất với JD, theo cấu trúc Action Verb + Context + Impact.
+Chỉ trả về JSON theo schema yêu cầu. Không trả về bất kỳ text nào khác ngoài JSON.
+
+Nội dung yêu cầu:
+${req.description}`;
+    
+    try {
+      const cvData = await deps.provider.generateObject(cvSchema, planPrompt);
+      return {
+        nextStatus: "PLANNED",
+        planContent: JSON.stringify(cvData, null, 2),
+      };
+    } catch (e: any) {
+      return {
+        nextStatus: "CLARIFYING",
+        error: "Lỗi tạo CV JSON: " + e.message,
+      };
+    }
+  }
+
   const planPrompt: GenerateInput = {
     description: `Vui lòng lập một dàn ý chi tiết bằng Markdown cho tài liệu sau (không viết mã LaTeX, chỉ viết dàn ý các mục chính):\n\n${req.description}`,
     docType: req.docType,
@@ -596,6 +691,24 @@ export async function handleGenerate(
   deps: OrchestratorDeps,
   onChunk?: (text: string) => void
 ): Promise<StateMachineResult> {
+  if (req.template === "cv") {
+    try {
+      const cvData = JSON.parse(planContent) as CVData;
+      const bodyLatex = compileCVLatex(cvData);
+      const initialLatex = wrapBodyInTemplate("cv", bodyLatex, []);
+      return {
+        nextStatus: "REVIEWING",
+        latex: initialLatex,
+        attempts: 1,
+      };
+    } catch (e: any) {
+      return {
+        nextStatus: "REVIEWING",
+        error: "Parse CV JSON thất bại: " + e.message,
+      };
+    }
+  }
+
   const blueprint = buildBlueprint({ ...req });
   const assembled = assembleContext({
     blueprint,

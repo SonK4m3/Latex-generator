@@ -1,13 +1,17 @@
 import { NextResponse } from "next/server";
-import { store } from "@/lib/store/document-store";
+import { getDocument, updateDocument } from "@/lib/store/documentStore";
+import { getCurrentUserId } from "@/lib/auth/current-user";
 
 export async function POST(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const docId = params.id;
-    const document = store.get(docId);
+    const { id: docId } = await params;
+    const userId = await getCurrentUserId();
+    
+    // Pass userId if available, but many local routes might not have one.
+    const document = await getDocument(docId, userId || undefined);
 
     if (!document) {
       return NextResponse.json(
@@ -23,8 +27,14 @@ export async function POST(
       );
     }
 
+    // Parse potential new planContent from request body
+    const body = await req.json().catch(() => ({}));
+    
     // Cập nhật trạng thái
-    store.update(docId, { status: "GENERATING" });
+    await updateDocument(docId, { 
+      status: "GENERATING",
+      ...(body.planContent ? { planContent: body.planContent } : {})
+    }, userId || undefined);
 
     // Trả về response để client biết chuyển UI sang GENERATING
     return NextResponse.json({

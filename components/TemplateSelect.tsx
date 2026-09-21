@@ -32,7 +32,7 @@ export default function TemplateSelect({
       <span className="font-medium">Dạng tài liệu (template)</span>
       <select
         aria-label="Dạng tài liệu"
-        className="rounded border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+        className="rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
         value={value}
         disabled={disabled}
         onChange={(e) => onChange(e.target.value as TemplateId)}
@@ -47,7 +47,12 @@ export default function TemplateSelect({
           </optgroup>
         ))}
       </select>
-      <span className="text-xs text-zinc-500">{desc}</span>
+      {desc && (
+        <span className="text-xs text-muted-foreground">{desc}</span>
+      )}
+      <span className="text-xs text-muted-foreground/70">
+        💡 Hệ thống sẽ tự chọn cấu trúc LaTeX phù hợp với dạng tài liệu. Bạn không cần biết LaTeX.
+      </span>
     </label>
   );
 }

@@ -7,9 +7,9 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-jakarta);
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-geist-sans);
+  --font-heading: var(--font-jakarta);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -46,27 +46,52 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+  
+  /* 8px Grid Spacing — use these custom properties for 8px-aligned layouts.
+     Standard Tailwind spacing (p-1=4px, p-2=8px, etc.) is preserved.
+     Use p-[--grid-1], gap-[--grid-2], etc. for strict 8px grid alignment. */
+  --grid-1: 8px;
+  --grid-2: 16px;
+  --grid-3: 24px;
+  --grid-4: 32px;
+  --grid-5: 40px;
+  --grid-6: 48px;
+  
+  /* Glassmorphism effects — kept as tokens for backward compat, now flat */
+  --color-glass-bg: var(--card);
+  --color-glass-border: var(--border);
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  /* Blue-gray very light background for SaaS feel */
+  --background: oklch(0.985 0.01 250); 
+  --foreground: oklch(0.2 0.01 250);
+  
+  /* Glass card is generally white with transparency for glassmorphism */
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.2 0.01 250);
+  
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.2 0.01 250);
+  
+  /* Trust Blue #2563EB */
+  --primary: oklch(0.546 0.245 262.881);
   --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
+  
+  /* Accent for subtle elements */
+  --secondary: oklch(0.95 0.02 250);
+  --secondary-foreground: oklch(0.2 0.01 250);
+  
+  --muted: oklch(0.95 0.02 250);
+  --muted-foreground: oklch(0.55 0.02 250);
+  
+  /* Orange CTA highlight #F97316 */
+  --accent: oklch(0.675 0.200 35.8);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --ring: oklch(0.546 0.245 262.881);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -81,6 +106,10 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  
+  /* Flat surface tokens (formerly glassmorphism) */
+  --glass-bg: var(--card);
+  --glass-border: var(--border);
 }
 
 .dark {
@@ -101,7 +130,7 @@
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --ring: oklch(0.546 0.245 262.881);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -115,6 +144,10 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  
+  /* Dark mode flat surface tokens */
+  --glass-bg: var(--card);
+  --glass-border: var(--border);
 }
 
 @layer base {
@@ -123,8 +156,91 @@
   }
   body {
     @apply bg-background text-foreground;
+    color-scheme: light dark;
   }
   html {
     @apply font-sans;
   }
+
+  /* Focus states: visible focus rings for accessibility */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+
+  /* Prefers reduced motion: disable all animations and transitions */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /* Tonal flat surface — replaces glassmorphism for better performance and simplicity */
+  .glass {
+    background-color: var(--card);
+    border: 1px solid var(--border);
+  }
+
+  .glass-light {
+    background-color: color-mix(in oklch, var(--card), var(--background) 40%);
+    border: 1px solid var(--border);
+  }
+
+  .dark .glass-light {
+    background-color: color-mix(in oklch, var(--card), var(--background) 30%);
+    border: 1px solid var(--border);
+  }
+
+  /* Smooth transitions (only on non-reduced-motion) */
+  @supports (animation: foo) {
+    @media (prefers-reduced-motion: no-preference) {
+      button,
+      [role="button"],
+      a,
+      input,
+      textarea,
+      select {
+        transition: background-color 150ms ease-out, color 150ms ease-out,
+          box-shadow 150ms ease-out, border-color 150ms ease-out;
+      }
+    }
+  }
+
+  /* Skip link for accessibility (hidden until focused) */
+  .skip-to-main {
+    position: absolute;
+    top: -40px;
+    left: 0;
+    background: var(--primary);
+    color: var(--primary-foreground);
+    padding: 0.5rem 1rem;
+    text-decoration: none;
+    border-radius: var(--radius);
+    z-index: 9999;
+  }
+
+  .skip-to-main:focus {
+    top: 0.5rem;
+    left: 0.5rem;
+  }
+
+  /* Heading hierarchy with scroll margin for sticky headers */
+  h1, h2, h3, h4, h5, h6 {
+    scroll-margin-top: 80px;
+    text-wrap: pretty;
+  }
+
+  /* Input placeholders with ellipsis pattern */
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--muted-foreground);
+    opacity: 0.8;
+  }
+
+  /* 8px Grid Utilities — use p-[--grid-1], gap-[--grid-2], etc. for strict 8px alignment */
+  /* Standard Tailwind spacing (p-1=4px, p-2=8px) works normally alongside these */
 }

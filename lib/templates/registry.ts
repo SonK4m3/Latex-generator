@@ -1387,24 +1387,24 @@ export const TEMPLATES: Record<TemplateId, DocumentTemplate> = {
         ],
       ),
   }),
-  // ── 11. CV / résumé — plain `article`, self-laid-out (NO moderncv/images) ──
+  // ── 11. CV / résumé — plain `article`, single column, component based ──
   cv: defineTemplate({
     id: "cv",
     label: "CV / Sơ yếu lý lịch",
     category: "Hồ sơ",
     description:
-      "CV/sơ yếu lý lịch: Bố cục 2 cột hiện đại, tối giản trên nền article — KHÔNG moderncv, KHÔNG ảnh ngoài.",
+      "CV/sơ yếu lý lịch: Bố cục 1 cột tinh gọn, tối ưu cho ATS với các component dựng sẵn.",
     documentClass: "article",
-    packages: ["geometry", "hyperref", "enumitem", "xcolor"],
+    packages: ["geometry", "hyperref", "enumitem", "titlesec", "fontawesome5"],
 
     capabilities: {
-      headings: true,              // \section* for CV sections
-      lists: true,                 // itemize for bullet points
-      tables: true,                // date | detail layout
+      headings: true,
+      lists: true,
+      tables: false,
       basicMath: false,
       advancedMath: false,
       theoremEnvironments: false,
-      tikzDiagrams: true,          // optional photo placeholder / rule decorations
+      tikzDiagrams: false,
       citations: false,
       codeListings: false,
       abstract: false,
@@ -1412,39 +1412,34 @@ export const TEMPLATES: Record<TemplateId, DocumentTemplate> = {
     },
 
     packageAllowlist: [
-      "geometry", "hyperref", "enumitem", "xcolor", "titlesec", "tikz",
-      // safe, macro-only table/rule packages for CV layout
-      "array", "tabularx", "booktabs", "multirow",
+      "geometry", "hyperref", "enumitem", "xcolor", "titlesec", "fontawesome5",
     ],
 
     repairHints: [
       {
         errorPattern: "PACKAGE_ERROR",
         action:
-          "This CV is PLAIN article — only geometry/hyperref/enumitem/xcolor/titlesec/tikz + table " +
-          "packages (array/tabularx/booktabs/multirow) are allowed. Do NOT load moderncv, europasscv, " +
-          "friggeri-cv or any CV class/package; never use inputenc/fontenc.",
+          "This CV is PLAIN article — only geometry/hyperref/enumitem/xcolor/titlesec/fontawesome5 are allowed. " +
+          "Do NOT load moderncv, europasscv, friggeri-cv or any CV class/package; never use inputenc/fontenc.",
       },
       {
         errorPattern: "SYNTAX_ERROR",
         action:
-          "Build the CV by hand on article: a centered name/contact header (\\textbf/\\Large, no \\maketitle), " +
-          "then \\section*{Experience}/\\section*{Education}/\\section*{Skills} with itemize and \\hfill for dates. " +
-          "Do NOT use moderncv commands like \\cventry/\\cvitem/\\name — they require the moderncv class.",
+          "Use ONLY the predefined macros: \\cvheader, \\cvsection, \\cvexperience, \\cvproject. " +
+          "Do NOT use \\section, \\subsection, or moderncv commands like \\cventry/\\cvitem/\\name.",
       },
     ],
     promptGuidance: [
-      "TYPE: Curriculum vitae / résumé — modern 2-column layout built on PLAIN article. This is NOT moderncv.",
-      "TECH RESUME RULES: Structure skills by category (Languages, Frameworks, Databases, Tools) without skill bars. Rewrite experience bullets using: [Action Verb] + [Technical What] + [Scale/Impact] + [Technology Used]. Include metrics (latency, users, cost) if provided. Format projects as: Project Name | Tech | Link.",
-      "LAYOUT: Use two `minipage` environments side by side. Left column (e.g., 0.3\\textwidth) for Contact, Skills, Languages. Right column (e.g., 0.65\\textwidth) for Summary, Experience, Projects, Education.",
-      "STYLING: Keep it minimal and grayscale. Use `\\Large\\textbf{}` for names, and thin gray lines (`\\color{gray}\\hrule\\vspace{1ex}`) to separate sections. Do NOT use heavy icons or external packages.",
-      "Header (NO \\maketitle): Name and current role at the top (or top of the left column).",
-      "Sections: Use `\\section*{...}` (unnumbered) inside the minipages.",
-      "Entries: Put the organisation in `\\textbf{}` and align dates to the right with `\\hfill`. Use `itemize` (enumitem: `\\begin{itemize}[leftmargin=*]`) for details.",
-      "Photo: NO external images (`\\includegraphics` FORBIDDEN). If a photo is requested, ignore it or draw a simple blank TikZ box.",
-      "FORBIDDEN: \\documentclass{moderncv} / europasscv / friggeri-cv or their commands (\\cventry, \\cvitem, \\name).",
-      "FORBIDDEN: \\includegraphics, \\maketitle, \\setmainfont, \\babelfont.",
-      "EXAMPLE: \\begin{minipage}[t]{0.3\\textwidth} \\section*{Skills} ... \\end{minipage} \\hfill \\begin{minipage}[t]{0.65\\textwidth} \\section*{Experience} ... \\end{minipage}",
+      "TYPE: Curriculum vitae / résumé — modern 1-column layout built on PLAIN article. This is NOT moderncv.",
+      "TECH RESUME RULES: Structure skills by category. Rewrite experience bullets using: [Action Verb] + [Technical What] + [Scale/Impact] + [Technology Used].",
+      "PREAMBLE CONTRACT: The template already defines the following CV components (macros). YOU MUST USE THEM EXACTLY AS DEFINED:",
+      "- \\cvheader{Name}{Phone}{Email}{Link} : Generates the top header. (e.g. \\cvheader{Nguyen Van A}{0900123456}{email@example.com}{github.com/abc})",
+      "- \\cvsection{Title} : Generates a section heading. (e.g. \\cvsection{EXPERIENCE})",
+      "- \\cvexperience{Company}{Role}{Date} : Generates an experience entry. (e.g. \\cvexperience{ABC Corp}{Software Engineer}{2020 - 2023})",
+      "- \\cvproject{Project Name}{Date} : Generates a project entry.",
+      "Do NOT use \\section{} or \\subsection{}. Use ONLY \\cvsection.",
+      "Use standard \\begin{itemize} ... \\end{itemize} for bullet points under experience/projects.",
+      "FORBIDDEN: \\section, \\subsection, \\includegraphics, moderncv commands.",
     ].join(" "),
     clarificationFields: [
       {
@@ -1455,12 +1450,12 @@ export const TEMPLATES: Record<TemplateId, DocumentTemplate> = {
       {
         id: "experience",
         importance: "critical",
-        question: "Hãy tóm tắt kinh nghiệm làm việc của bạn. Khuyến khích nêu rõ quy mô, impact, metric (vd: số lượng người dùng, % tăng trưởng) và công nghệ đã sử dụng.",
+        question: "Hãy tóm tắt kinh nghiệm làm việc của bạn. Khuyến khích nêu rõ quy mô, impact, metric và công nghệ đã sử dụng.",
       },
       {
         id: "skills",
         importance: "optional",
-        question: "Hãy liệt kê các kỹ năng chính của bạn (nếu có).",
+        question: "Hãy liệt kê các kỹ năng chính của bạn.",
         defaultIfSkipped: "Không có kỹ năng cụ thể được yêu cầu.",
       },
       {
@@ -1471,57 +1466,36 @@ export const TEMPLATES: Record<TemplateId, DocumentTemplate> = {
       },
     ],
     renderMock: (d) =>
-      // Self-laid-out 2-column CV using minipages.
       docRaw(
         "article",
-        ["geometry", "hyperref", "enumitem", "xcolor"],
-        [],
+        ["geometry", "hyperref", "enumitem", "titlesec", "fontawesome5"],
         [
-          "\\noindent",
-          "\\begin{minipage}[t]{0.3\\textwidth}",
-          "{\\LARGE \\textbf{Nguyễn Văn A}} \\\\[0.5ex]",
-          "\\textit{Kỹ sư phần mềm} \\\\[2ex]",
-          "\\section*{Liên hệ}",
-          "\\color{gray}\\hrule\\vspace{1ex}\\color{black}",
-          "email@example.com \\\\",
-          "0900 000 000 \\\\",
-          "Thành phố \\\\",
-          "github.com/nguyenvana \\\\",
-          "",
-          "\\section*{Kỹ năng}",
-          "\\color{gray}\\hrule\\vspace{1ex}\\color{black}",
-          "\\textbf{Languages:} \\\\ TypeScript, Python, Go \\\\[1ex]",
-          "\\textbf{Frameworks:} \\\\ React, Node.js \\\\[1ex]",
-          "\\textbf{Cloud/Tools:} \\\\ Docker, AWS, CI/CD",
-          "\\end{minipage}",
-          "\\hfill",
-          "\\begin{minipage}[t]{0.65\\textwidth}",
-          "\\vspace{-5ex} % Khắc phục độ chênh lệch tiêu đề",
-          "\\section*{Tóm tắt}",
-          "\\color{gray}\\hrule\\vspace{1ex}\\color{black}",
+          "\\geometry{left=1.5cm, top=1.5cm, right=1.5cm, bottom=1.5cm}",
+          "\\newcommand{\\cvheader}[4]{\\begin{center}{\\Huge \\textbf{#1}}\\\\[0.5em] \\faPhone\\ #2 \\quad \\faEnvelope\\ \\href{mailto:#3}{#3} \\quad \\faLink\\ \\href{https://#4}{#4}\\end{center}\\vspace{1em}}",
+          "\\newcommand{\\cvsection}[1]{\\vspace{1em}{\\Large \\textbf{#1}}\\hrule\\vspace{0.5em}}",
+          "\\newcommand{\\cvexperience}[3]{\\noindent\\textbf{#1} \\hfill #3\\\\[0.2em] \\textit{#2}\\par\\vspace{0.2em}}",
+          "\\newcommand{\\cvproject}[2]{\\noindent\\textbf{#1} \\hfill #2\\par\\vspace{0.2em}}",
+          "\\setlist[itemize]{leftmargin=*, noitemsep, topsep=0pt}",
+        ],
+        [
+          "\\cvheader{Nguyễn Văn A}{0900 000 000}{email@example.com}{github.com/nguyenvana}",
+          "\\cvsection{MỤC TIÊU NGHỀ NGHIỆP}",
           `${d}`,
           "",
-          "\\section*{Kinh nghiệm}",
-          "\\color{gray}\\hrule\\vspace{1ex}\\color{black}",
-          "\\textbf{Công ty ABC} \\hfill 2022--nay \\\\",
-          "\\textit{Backend Engineer}",
-          "\\begin{itemize}[leftmargin=*]",
-          "\\item Thiết kế và triển khai 5 microservices Node.js xử lý 50K request/phút, giảm tải hệ thống 30\\%.",
-          "\\item Tối ưu truy vấn PostgreSQL và dùng Redis caching, giảm độ trễ API 60\\% (từ 500ms xuống 200ms).",
+          "\\cvsection{HỌC VẤN}",
+          "\\cvexperience{Đại học Công nghệ}{Cử nhân Khoa học Máy tính}{2018 - 2022}",
+          "",
+          "\\cvsection{KINH NGHIỆM LÀM VIỆC}",
+          "\\cvexperience{Công ty ABC}{Software Engineer}{06/2022 - Nay}",
+          "\\begin{itemize}",
+          "\\item Thiết kế và triển khai 5 microservices xử lý 50K request/phút.",
           "\\end{itemize}",
           "",
-          "\\section*{Dự án}",
-          "\\color{gray}\\hrule\\vspace{1ex}\\color{black}",
-          "\\textbf{Distributed Task Queue} | Python, Redis | github.com/user/taskqueue \\\\",
-          "\\begin{itemize}[leftmargin=*]",
-          "\\item Hệ thống phân tán xử lý 10K+ jobs/giờ với retry tự động.",
+          "\\cvsection{DỰ ÁN CÁ NHÂN}",
+          "\\cvproject{Hệ thống Quản lý}{2021}",
+          "\\begin{itemize}",
+          "\\item Xây dựng bằng ReactJS và Node.js.",
           "\\end{itemize}",
-          "",
-          "\\section*{Học vấn}",
-          "\\color{gray}\\hrule\\vspace{1ex}\\color{black}",
-          "\\textbf{Đại học XYZ} \\hfill 2018--2022 \\\\",
-          "Cử nhân Công nghệ thông tin.",
-          "\\end{minipage}",
         ],
       ),
   }),
