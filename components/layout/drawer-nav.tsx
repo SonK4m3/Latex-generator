@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, ReactNode } from "react"
+import { useEffect, useRef, useState, ReactNode } from "react"
 import { Menu, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { NavItem } from "@/components/layout/nav-item"
@@ -14,11 +14,24 @@ interface DrawerNavProps {
 
 export function DrawerNav({ authStatus }: DrawerNavProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const triggerRef = useRef<HTMLDivElement>(null)
+  const hasOpenedRef = useRef(false)
+
+  // The drawer is inert while closed, so move focus back to the trigger when it closes
+  // to avoid dropping keyboard users on <body>.
+  useEffect(() => {
+    if (isOpen) {
+      hasOpenedRef.current = true
+      return
+    }
+    if (!hasOpenedRef.current) return
+    triggerRef.current?.querySelector("button")?.focus()
+  }, [isOpen])
 
   return (
     <>
-      {/* Mobile Menu Button */}
-      <div className="fixed top-2 right-2 z-50 md:hidden">
+      {/* Drawer trigger (below 1024px) */}
+      <div ref={triggerRef} className="fixed top-2 right-2 z-50 lg:hidden">
         <Button
           size="icon-sm"
           variant="ghost"
@@ -39,18 +52,19 @@ export function DrawerNav({ authStatus }: DrawerNavProps) {
       <GlassOverlay
         open={isOpen}
         onClose={() => setIsOpen(false)}
-        className="md:hidden"
+        className="lg:hidden"
       />
 
       {/* Drawer */}
       <div
         id="mobile-drawer"
         className={cn(
-          "fixed top-0 left-0 h-screen w-64 glass z-40 flex flex-col transition-transform duration-200 md:hidden",
+          "fixed top-0 left-0 h-screen w-64 glass z-40 flex flex-col transition-transform duration-200 lg:hidden",
           isOpen ? "translate-x-0" : "-translate-x-full"
         )}
         role="navigation"
         aria-label="Mobile navigation"
+        inert={!isOpen}
       >
         {/* Header */}
         <div className="flex items-center justify-between p-2 border-b border-glass-border">

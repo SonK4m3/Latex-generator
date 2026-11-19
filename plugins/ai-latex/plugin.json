@@ -1,0 +1,22 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "latex-ai-generator",
+  "version": "0.1.0",
+  "description": "Write LaTeX in chat, compile with Tectonic, and open the saved document in your LaTeX AI Generator editor.",
+  "license": "MIT",
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "LaTeX AI Generator",
+        "shortDescription": "Write, compile, edit LaTeX",
+        "longDescription": "Create LaTeX documents in ChatGPT, compile them to saved PDFs with Tectonic, and open the document in the LaTeX AI Generator web editor for live editing.",
+        "category": "Productivity",
+        "defaultPrompt": "Write a LaTeX document from my requirements and compile it to PDF.",
+        "logo": "./assets/icon.svg",
+        "composerIcon": "./assets/icon.svg",
+        "capabilities": [],
+        "developerName": "AI LaTeX Generator"
+      }
+    }
+  }
+}

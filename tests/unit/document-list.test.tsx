@@ -36,7 +36,7 @@ afterEach(() => {
 });
 
 describe("DocumentList — TanStack Query (FE-1.2)", () => {
-  it("render ngay từ initialData (không cần fetch) + badge isProject", () => {
+  it("render ngay từ initialData while checking for newer library items + badge isProject", async () => {
     const fetchSpy = vi.fn();
     vi.stubGlobal("fetch", fetchSpy);
 
@@ -49,12 +49,12 @@ describe("DocumentList — TanStack Query (FE-1.2)", () => {
       />,
     );
 
-    // initialData hiển thị ngay, không gọi fetch khi mount.
+    // Initial data is immediately visible while the update probe checks for newer library items.
     expect(screen.getByText("Đơn file")).toBeInTheDocument();
     expect(screen.getByText("Dự án luận văn")).toBeInTheDocument();
     // isProject badge shows "· Dự án" inline
     expect(screen.getByText(/· Dự án/)).toBeInTheDocument();
-    expect(fetchSpy).not.toHaveBeenCalled();
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
   });
 
   it("xoá → inline confirm → gọi DELETE rồi invalidate/refetch (item biến mất)", async () => {
@@ -75,8 +75,9 @@ describe("DocumentList — TanStack Query (FE-1.2)", () => {
       />,
     );
 
-    // Click "Xoá" to show inline confirmation
-    await user.click(screen.getByRole("button", { name: "Xoá Sẽ xoá" }));
+    // Open the row menu and choose delete to show inline confirmation.
+    await user.click(screen.getByRole("button", { name: "Thao tác cho Sẽ xoá" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Xoá tài liệu" }));
 
     // Then click "Xác nhận" to actually delete
     await user.click(screen.getByRole("button", { name: "Xác nhận" }));
@@ -139,8 +140,9 @@ describe("DocumentList — TanStack Query (FE-1.2)", () => {
 
     renderWithClient(<DocumentList initialDocuments={[doc({ id: "d1", title: "Giữ lại" })]} />);
 
-    // Click "Xoá" to show inline confirmation
-    await user.click(screen.getByRole("button", { name: "Xoá Giữ lại" }));
+    // Open the row menu and choose delete to show inline confirmation.
+    await user.click(screen.getByRole("button", { name: "Thao tác cho Giữ lại" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Xoá tài liệu" }));
     // Then click "Huỷ" to cancel
     await user.click(screen.getByRole("button", { name: "Huỷ" }));
 

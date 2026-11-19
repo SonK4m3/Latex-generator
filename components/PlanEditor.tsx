@@ -33,8 +33,8 @@ export default function PlanEditor({ docId, initialPlanContent, onApprove }: Pla
       }
 
       onApprove(docId, content);
-    } catch (err: any) {
-      setError(err.message || "Có lỗi xảy ra khi duyệt dàn ý.");
+    } catch (error: unknown) {
+      setError(error instanceof Error ? error.message : "Có lỗi xảy ra khi duyệt dàn ý.");
       setIsApproving(false);
     }
   };

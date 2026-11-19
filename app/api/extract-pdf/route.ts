@@ -18,8 +18,11 @@ export async function POST(req: NextRequest) {
     const data = await pdfParse(Buffer.from(buffer));
 
     return NextResponse.json({ text: data.text });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error parsing PDF:", error);
-    return NextResponse.json({ error: error.message || "Failed to parse PDF" }, { status: 500 });
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Failed to parse PDF" },
+      { status: 500 }
+    );
   }
 }

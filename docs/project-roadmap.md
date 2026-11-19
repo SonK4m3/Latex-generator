@@ -10,8 +10,15 @@
 
 ## 1. Strategy Context (Bối cảnh chiến lược)
 
-**Vision:** Biến mô tả ngôn ngữ tự nhiên (Việt/Anh) thành **PDF LaTeX biên dịch thật** — an toàn,
-đa mẫu, tự sửa lỗi — để người *không chuyên LaTeX* vẫn tạo được tài liệu kỹ thuật chất lượng cao.
+**Định hướng lõi:** Giúp người soạn tài liệu kỹ thuật đi từ yêu cầu hoặc bản nháp đến PDF, sửa đúng phần cần đổi và kiểm tra bản mới. Người dùng giữ được mã nguồn để tiếp tục công việc. Sinh LaTeX, biên dịch và tự sửa lỗi phục vụ cùng một vòng soạn thảo.
+
+| Khi người dùng gặp vấn đề | Năng lực hiện có | Kết quả nên đo |
+| :-- | :-- | :-- |
+| Có bản nháp Markdown hoặc ý tưởng nhưng mất thời gian dựng tài liệu | Chuyển Markdown, tạo theo mẫu, xuất PDF và mã nguồn | Thời gian từ đầu vào đến bản đầu người dùng chấp nhận |
+| Chờ dựng tài liệu mà khó biết đang ở bước nào hoặc cách thoát lỗi | Hiển thị bước xử lý, biên dịch Tectonic, đọc log và thử sửa | Tỷ lệ tác vụ ra PDF mà người dùng không phải tự gỡ lỗi |
+| Đọc PDF thấy một đoạn cần sửa, phải tìm lại trong nguồn và kiểm tra sau khi dựng | Preview, chat-edit, đối chiếu vùng chọn PDF với nguồn và phiên bản tài liệu | Tỷ lệ sửa đúng đoạn và thời gian đến khi người dùng xác nhận bản mới |
+
+Khó quan sát tiến trình và phải mở màn hình khác để xem kết quả đã được ghi nhận khi dùng thử nội bộ. Phạm vi ảnh hưởng trong từng nhóm khách hàng cần xác minh trên tài liệu thật. [Nhật ký dùng thử](./student-journey-tracking.md) · [Tiến độ và giới hạn vùng chọn](./feature-tracking.md)
 
 **Target users:** Sinh viên, nghiên cứu sinh, giảng viên, kỹ sư viết báo cáo / bài báo / luận văn /
 slide / đề thi (Toán, Lý, Hóa, kỹ thuật).
@@ -169,6 +176,17 @@ Mỗi epic = **hypothesis** + **success metric** + **effort (T-shirt: S/M/L/XL)*
 - **Effort:** M–L. **Dependency:** đã có `Dockerfile` / `docker-compose.yml` / `Caddyfile` làm nền.
 
 ---
+
+### Các ngách đang thăm dò
+
+| Tệp người dùng | Giả thuyết và phép thử trước khi đưa vào Next |
+| :-- | :-- |
+| Sinh viên CNTT năm cuối chuẩn bị bảo vệ, ở chương trình chấp nhận PDF | Từ bản báo cáo đã chốt, chọn kết quả và hình để tạo slide Beamer theo thời lượng bảo vệ. Thử trên ba báo cáo, đo thời gian đến bản đủ dùng để tập trình bày và đối chiếu từng số liệu với nguồn. Hai hướng tiếp theo là lập phiếu giải trình sau phản biện và kiểm tra bộ hồ sơ theo khoa. [Nghiên cứu và tiêu chí thử nghiệm](./product-discovery-graduation-projects.md) |
+| Giáo viên, gia sư Toán dạy nhiều nhóm cùng chuyên đề và phát bài trên giấy | Thử biến một bài mẫu đã duyệt thành nhiều phiếu luyện tập có dữ kiện khác nhau, lời giải và đáp số khớp từng bản. Bắt đầu với phương trình bậc hai có nghiệm nguyên. Dùng lại mẫu đề thi và PDF hiện có. Kiểm chứng thời gian soạn cộng thời gian rà lời giải, độ chính xác và việc giáo viên mang bài thứ hai trở lại. Moodle đã hỗ trợ bài tập tham số, Azota đã hỗ trợ trộn đề và xuất đáp án. Cần kiểm chứng giá trị của quy trình soạn phiếu in bằng tiếng Việt trên bài thật. [Moodle](https://docs.moodle.org/402/en/Calculated_question_type) · [Azota](https://azota.vn/tron-de-trac-nghiem) |
+
+**Ngách bổ sung để phỏng vấn — nhóm nghiên cứu nhận dự án LaTeX nhiều file từ đồng tác giả và phải nộp arXiv.** Khi gói nguồn thiếu hình, thiếu style hoặc còn đường dẫn tuyệt đối, người phụ trách phải lần theo log dù đã có PDF trên máy tác giả. Thử một báo cáo chẩn đoán trên chính gói nguồn từng bị lỗi, chỉ rõ tệp gọi, phụ thuộc thiếu và cách sửa để tác giả duyệt. Overleaf đã xuất được ZIP cho arXiv, nên tuyển người dùng nhận dự án từ nhiều công cụ và so thời gian xử lý với cách họ đang dùng. Đối chiếu chẩn đoán bằng log lần nộp thực tế. Biên dịch Tectonic cục bộ chỉ xác nhận kết quả ở môi trường của sản phẩm. [Lỗi arXiv ghi nhận](https://info.arxiv.org/help/faq/mistakes.html) · [Quy cách nguồn](https://info.arxiv.org/help/submit_tex.html) · [Overleaf](https://docs.overleaf.com/troubleshooting-and-support/checklist-for-arxiv-submissions)
+
+**Các thị trường có nhu cầu xuất tài liệu lặp lại:** ưu tiên phỏng vấn nhóm khảo sát phải xuất báo cáo riêng cho từng đơn vị từ cùng bảng kết quả. Hai nhóm để so sánh là kỹ sư phải cập nhật thuyết minh khi bảng tính thay đổi và giảng viên phải đồng bộ notebook với bản bài tập phát cho lớp. Tiêu chí chọn gồm thời gian rà bản xuất, sai lệch với nguồn và nhu cầu dùng lại ở lần tiếp theo. [Bằng chứng, công cụ hiện có và phép thử cho từng nhóm](./product-discovery-recurring-technical-reports.md)
 
 ## 6. Out of Scope / Not Now (và vì sao)
 

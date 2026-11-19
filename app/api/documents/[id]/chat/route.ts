@@ -115,10 +115,15 @@ export async function POST(request: Request, ctx: Ctx): Promise<Response> {
             error: failed ? result.error : undefined,
             attempts: result.attempts,
             messages: [...doc.messages, userMsg, assistantMsg],
-          }, userId);
+          }, userId, doc.updatedAt);
 
           if (!updated) {
-            enqueue("error", { message: "Không tìm thấy tài liệu" });
+            const current = await getDocument(id, userId);
+            enqueue("error", {
+              code: "version_conflict",
+              message: "Không thể lưu vì tài liệu đã thay đổi hoặc không còn tồn tại.",
+              document: current,
+            });
             controller.close();
             return;
           }
@@ -140,7 +145,7 @@ export async function POST(request: Request, ctx: Ctx): Promise<Response> {
               : `Lỗi xử lý: ${msg}`;
           await updateDocument(id, {
             messages: [...doc.messages, userMsg, newMessage("assistant", `⚠️ ${errText}`)],
-          }, userId);
+          }, userId, doc.updatedAt);
           enqueue("error", { message: errText });
           controller.close();
         }
@@ -180,9 +185,13 @@ export async function POST(request: Request, ctx: Ctx): Promise<Response> {
         error: failed ? result.error : undefined,
         attempts: result.attempts,
         messages: [...doc.messages, userMsg, assistantMsg],
-      }, userId);
+      }, userId, doc.updatedAt);
 
       if (!updated) {
+        const current = await getDocument(id, userId);
+        if (current && current.updatedAt !== doc.updatedAt) {
+          return Response.json({ error: "Tài liệu đã thay đổi trong lúc chỉnh sửa." }, { status: 409 });
+        }
         return Response.json({ error: "Không tìm thấy tài liệu" }, { status: 404 });
       }
       log.info("document.chat_edit", {
@@ -202,7 +211,7 @@ export async function POST(request: Request, ctx: Ctx): Promise<Response> {
           : `Lỗi xử lý: ${msg}`;
       await updateDocument(id, {
         messages: [...doc.messages, userMsg, newMessage("assistant", `⚠️ ${errText}`)],
-      }, userId);
+      }, userId, doc.updatedAt);
       return Response.json({ error: errText }, { status: 502 });
     }
   }

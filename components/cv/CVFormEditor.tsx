@@ -45,8 +45,8 @@ export default function CVFormEditor({ docId, initialJson, onApprove }: CVFormEd
       }
 
       onApprove(docId, finalJson);
-    } catch (err: any) {
-      setError(err.message || "Có lỗi xảy ra khi duyệt CV.");
+    } catch (error: unknown) {
+      setError(error instanceof Error ? error.message : "Có lỗi xảy ra khi duyệt CV.");
       setIsApproving(false);
     }
   };
@@ -137,7 +137,7 @@ export default function CVFormEditor({ docId, initialJson, onApprove }: CVFormEd
             ))}
           </section>
 
-          <p className="text-xs text-amber-600">* Để tối giản form, các phần Dự án & Học vấn bạn có thể chuyển qua tab "Sửa mã JSON" để tinh chỉnh chi tiết.</p>
+          <p className="text-xs text-amber-600">* Để tối giản form, các phần Dự án & Học vấn bạn có thể chuyển qua tab “Sửa mã JSON” để tinh chỉnh chi tiết.</p>
         </div>
       )}
     </div>

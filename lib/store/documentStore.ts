@@ -14,6 +14,7 @@ import type {
   DocumentSummary,
   StoredDocument,
   UpdateDocumentPatch,
+  WorkspaceDocument,
 } from "@/lib/types/document";
 
 /** Backend đang hoạt động (đọc lazily để tôn trọng env runtime/test). */
@@ -34,6 +35,27 @@ export function getDocument(
   return db().getDocument(id, ownerId);
 }
 
+/**
+ * Bản workspace: không kèm `pdfBase64`, luôn có `hasPdf` + revision (nếu backend có).
+ * Supabase dùng projection riêng; file backend đọc JSON rồi bỏ bytes PDF tại facade.
+ */
+export async function getWorkspaceDocument(
+  id: string,
+  ownerId: string,
+): Promise<WorkspaceDocument | null> {
+  if (getConfig().storeBackend === "supabase") {
+    return supabaseStore.getWorkspaceDocument(id, ownerId);
+  }
+  const doc = await fileStore.getDocument(id, ownerId);
+  if (!doc) return null;
+  const workspace: StoredDocument = { ...doc };
+  delete workspace.pdfBase64;
+  return {
+    ...workspace,
+    hasPdf: Boolean(doc.pdfBase64) || Boolean(doc.hasPdf),
+  };
+}
+
 export function listDocuments(ownerId?: string): Promise<DocumentSummary[]> {
   return db().listDocuments(ownerId);
 }
@@ -42,8 +64,12 @@ export function updateDocument(
   id: string,
   patch: UpdateDocumentPatch,
   ownerId?: string,
+  expectedUpdatedAt?: string,
 ): Promise<StoredDocument | null> {
-  return db().updateDocument(id, patch, ownerId);
+  if (getConfig().storeBackend === "supabase") {
+    return supabaseStore.updateDocument(id, patch, ownerId, expectedUpdatedAt);
+  }
+  return fileStore.updateDocument(id, patch, ownerId);
 }
 
 export function appendMessages(

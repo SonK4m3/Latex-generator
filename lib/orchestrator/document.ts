@@ -661,10 +661,10 @@ ${req.description}`;
         nextStatus: "PLANNED",
         planContent: JSON.stringify(cvData, null, 2),
       };
-    } catch (e: any) {
+    } catch (error: unknown) {
       return {
         nextStatus: "CLARIFYING",
-        error: "Lỗi tạo CV JSON: " + e.message,
+        error: "Lỗi tạo CV JSON: " + (error instanceof Error ? error.message : "Lỗi không xác định"),
       };
     }
   }
@@ -701,10 +701,10 @@ export async function handleGenerate(
         latex: initialLatex,
         attempts: 1,
       };
-    } catch (e: any) {
+    } catch (error: unknown) {
       return {
         nextStatus: "REVIEWING",
-        error: "Parse CV JSON thất bại: " + e.message,
+        error: "Parse CV JSON thất bại: " + (error instanceof Error ? error.message : "Lỗi không xác định"),
       };
     }
   }

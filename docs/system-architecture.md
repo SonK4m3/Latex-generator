@@ -65,3 +65,41 @@ compilation service, and a dev-time prompt evaluation platform (not deployed to 
 6. If validation or compilation fails on a complete document, Next.js enters the repair loop with
    the AI Provider (bounded by `maxAttempts`, separate from truncation retries).
 7. The final PDF is returned to the UI.
+
+## 4. MCP compile workflow
+
+The plugin sends complete LaTeX to the Next.js Streamable HTTP route at `/api/mcp`.
+Supabase OAuth identifies the user and the PostgreSQL queue admits jobs with a per-user
+quota and an idempotency key. A separate worker calls the existing Tectonic service.
+The worker publishes the document and its immutable PDF snapshot in one transaction.
+Clients poll for status and request a short-lived, single-use link to the snapshot.
+See the [local setup guide](deployment-guide.md) for the OAuth and worker setup.
+
+For edits to an existing document, MCP reads the saved source and passes its
+revision timestamp to `update_document_source`. Single-file edits send complete LaTeX;
+project edits send `{path, content}` patches for existing readable text files only.
+The project RPC locks the owner-scoped document, checks its active OAuth consent and
+exact revision, then merges requested content into the stored JSONB array. Read and
+job/artifact RPC boundaries also check the live consent, so revoking the one plugin
+consent blocks subsequent MCP and direct database calls. It does not
+replace the project file list, so binary assets and untouched file metadata stay intact.
+Project structure and root path cannot be changed through this tool. When the root is
+patched, the legacy `latex` field is synchronized and the previous PDF is invalidated.
+
+The web source editors can also copy a versioned selection context containing the document ID,
+saved revision, file path, UTF-16 range, exact selected source, and bounded prefix/suffix anchors.
+The `edit_document_selection` MCP tool accepts that context plus replacement text. It reads the
+owner-scoped current source, rejects stale revisions or any range/anchor mismatch, then writes the
+single resulting file through the same consent-checked compare-and-set path. A concurrent edit
+therefore returns a conflict instead of moving the edit to a guessed location. Existing Realtime
+revision notices update the open web workspace; the new revision must be compiled there to refresh
+the PDF.
+
+The PDF preview is currently a browser iframe and does not expose selectable PDF nodes or map page
+coordinates back to LaTeX. Selection context therefore targets source ranges in this iteration.
+Direct PDF box selection needs a PDF.js renderer and a SyncTeX-based PDF-to-source mapping.
+
+The document trigger publishes a small revision notice through Supabase Realtime. The
+open web editor receives the notice over WebSocket and reads the current document
+through its authenticated API. Each notice represents a saved revision. Recompile the
+updated source in the editor to refresh the PDF preview.

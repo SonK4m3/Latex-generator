@@ -6,12 +6,18 @@
 // STATE và chỉ gửi lên server khi bấm "Lưu & biên dịch" — một PATCH duy nhất thay thế TOÀN BỘ mảng
 // `files` (khớp validateProject phía server, tránh 2 mô hình patch khác nhau).
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ProjectFile, StoredDocument } from "@/lib/types/document";
+import { CopySelectionContextButton } from "@/components/CopySelectionContextButton";
+import {
+  createSourceSelectionContext,
+  type SourceSelectionSnapshot,
+} from "@/lib/mcp/selection-context";
 
 export interface ProjectFileEditorProps {
   doc: StoredDocument;
   onSaved: (updated: StoredDocument) => void;
+  onDraftChange?: (dirty: boolean) => void;
 }
 
 /** Đường dẫn mới mặc định khi bấm "+ Thêm file" — tránh trùng với path đã có. */
@@ -25,7 +31,7 @@ function nextNewFilePath(existingPaths: string[]): string {
   return candidate;
 }
 
-export default function ProjectFileEditor({ doc, onSaved }: ProjectFileEditorProps) {
+export default function ProjectFileEditor({ doc, onSaved, onDraftChange }: ProjectFileEditorProps) {
   const initialFiles = doc.files ?? [];
   const initialRoot = doc.rootFile ?? initialFiles[0]?.path ?? "main.tex";
 
@@ -38,6 +44,23 @@ export default function ProjectFileEditor({ doc, onSaved }: ProjectFileEditorPro
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string>();
+  const [activeSelection, setActiveSelection] = useState<SourceSelectionSnapshot | null>(null);
+  const [baseUpdatedAt, setBaseUpdatedAt] = useState(doc.updatedAt);
+
+  useEffect(() => { onDraftChange?.(dirty); }, [dirty, onDraftChange]);
+
+  useEffect(() => {
+    if (dirty) return;
+    const files = doc.files ?? [];
+    const root = doc.rootFile ?? files[0]?.path ?? "main.tex";
+    // This mirrors a saved Realtime revision into a pristine editor; local dirty drafts are preserved.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDraftFiles(files);
+    setDraftRoot(root);
+    setActivePath((current) => files.some((file) => file.path === current) ? current : root);
+    setBaseUpdatedAt(doc.updatedAt);
+    setActiveSelection(null);
+  }, [doc.updatedAt, doc.files, doc.rootFile, dirty]);
 
   // Root file luôn hiện đầu tiên trong tab strip; còn lại giữ thứ tự ban đầu.
   const orderedFiles = useMemo(() => {
@@ -53,6 +76,7 @@ export default function ProjectFileEditor({ doc, onSaved }: ProjectFileEditorPro
       prev.map((f) => (f.path === activePath ? { ...f, content } : f)),
     );
     setDirty(true);
+    setActiveSelection(null);
   }
 
   function addFile() {
@@ -93,20 +117,37 @@ export default function ProjectFileEditor({ doc, onSaved }: ProjectFileEditorPro
       const res = await fetch(`/api/documents/${doc.id}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ files: draftFiles, rootFile: draftRoot }),
+        body: JSON.stringify({ files: draftFiles, rootFile: draftRoot, expectedUpdatedAt: baseUpdatedAt }),
       });
-      const data = (await res.json()) as StoredDocument & { error?: string };
+      const data = (await res.json()) as StoredDocument & {
+        error?: string;
+        document?: StoredDocument | null;
+      };
       if (!res.ok) {
         setSaveError(data.error ?? "Lưu thất bại.");
+        if (res.status === 409 && data.document) onSaved(data.document);
         return;
       }
       setDirty(false);
+      setBaseUpdatedAt(data.updatedAt);
       onSaved(data);
     } catch {
       setSaveError("Không kết nối được máy chủ.");
     } finally {
       setSaving(false);
     }
+  }
+
+  function useServerRevision() {
+    const files = doc.files ?? [];
+    const root = doc.rootFile ?? files[0]?.path ?? "main.tex";
+    setDraftFiles(files);
+    setDraftRoot(root);
+    setActivePath(root);
+    setBaseUpdatedAt(doc.updatedAt);
+    setDirty(false);
+    setActiveSelection(null);
+    setSaveError(undefined);
   }
 
   return (
@@ -116,7 +157,10 @@ export default function ProjectFileEditor({ doc, onSaved }: ProjectFileEditorPro
           <div key={f.path} className="flex items-center">
             <button
               type="button"
-              onClick={() => setActivePath(f.path)}
+              onClick={() => {
+                setActivePath(f.path);
+                setActiveSelection(null);
+              }}
               className={`rounded-l px-2 py-1 text-xs font-mono ${
                 activePath === f.path
                   ? "bg-blue-600 text-white"
@@ -172,8 +216,40 @@ export default function ProjectFileEditor({ doc, onSaved }: ProjectFileEditorPro
         className="min-h-[50vh] w-full rounded border border-zinc-300 bg-zinc-950 p-3 font-mono text-xs text-zinc-100 dark:border-zinc-700"
         value={activeFile?.content ?? ""}
         onChange={(e) => updateActiveContent(e.target.value)}
+        onSelect={(e) => {
+          const { selectionStart: start, selectionEnd: end } = e.currentTarget;
+          setActiveSelection(end > start && typeof activeFile?.content === "string" ? {
+            start,
+            end,
+            source: activeFile.content,
+            updatedAt: doc.updatedAt,
+          } : null);
+        }}
         spellCheck={false}
       />
+
+      <CopySelectionContextButton
+        context={activeSelection && !dirty && typeof activeFile?.content === "string"
+          && doc.files?.find((file) => file.path === activePath)?.content === activeFile.content
+          ? createSourceSelectionContext({
+            documentId: doc.id,
+            updatedAt: doc.updatedAt,
+            filePath: activePath,
+            source: activeFile.content,
+            selection: activeSelection,
+          })
+          : null}
+        disabled={dirty}
+      />
+
+      {dirty && doc.updatedAt !== baseUpdatedAt && (
+        <div role="alert" className="flex flex-wrap items-center gap-2 rounded border border-glass-border p-2">
+          <span className="mr-auto text-sm">Tài liệu đã có revision mới. Bản nháp này chưa được ghi đè.</span>
+          <button type="button" onClick={useServerRevision} className="rounded border px-2 py-1 text-xs">
+            Dùng bản mới nhất
+          </button>
+        </div>
+      )}
 
       {saveError && <p className="text-sm text-red-600">{saveError}</p>}
       <div className="flex items-center gap-2">

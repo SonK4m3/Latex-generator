@@ -1434,6 +1434,7 @@ export const TEMPLATES: Record<TemplateId, DocumentTemplate> = {
       "TECH RESUME RULES: Structure skills by category. Rewrite experience bullets using: [Action Verb] + [Technical What] + [Scale/Impact] + [Technology Used].",
       "PREAMBLE CONTRACT: The template already defines the following CV components (macros). YOU MUST USE THEM EXACTLY AS DEFINED:",
       "- \\cvheader{Name}{Phone}{Email}{Link} : Generates the top header. (e.g. \\cvheader{Nguyen Van A}{0900123456}{email@example.com}{github.com/abc})",
+      "EXAMPLE: Use \\cvsection{EXPERIENCE} followed by \\cvexperience{ABC Corp}{Software Engineer}{2020 - 2023}.",
       "- \\cvsection{Title} : Generates a section heading. (e.g. \\cvsection{EXPERIENCE})",
       "- \\cvexperience{Company}{Role}{Date} : Generates an experience entry. (e.g. \\cvexperience{ABC Corp}{Software Engineer}{2020 - 2023})",
       "- \\cvproject{Project Name}{Date} : Generates a project entry.",

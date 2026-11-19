@@ -10,7 +10,7 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Áp dụng cho mọi route TRỪ static assets và file tĩnh.
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    // MCP discovery, bearer auth and download grants do not use web session cookies.
+    "/((?!api/mcp(?:/|$)|api/artifacts/|\\.well-known/oauth-protected-resource(?:/|$)|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };

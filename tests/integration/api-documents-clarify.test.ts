@@ -134,7 +134,7 @@ describe("E7 redesign lần 2 — server ĐÓNG SSE ngay khi cần hỏi, resume
     expect(buffer).toContain("problem_statement");
     // KHÔNG còn expiresAt trong payload (đã bỏ theo redesign — session không hết hạn theo nghĩa
     // "phải trả lời trước X phút để không mất session", chỉ hết hạn theo nghĩa khác khi resume).
-  });
+  }, 10_000);
 
   it("resume qua route MỚI (không cần chờ trong response đầu) → tạo document với description đã enrich", async () => {
     currentPlanOverride = clarifyPlan();

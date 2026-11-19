@@ -4,9 +4,8 @@ import { DrawerNav } from "@/components/layout/drawer-nav";
 import AuthStatusClient from "@/components/AuthStatusClient";
 import AppCommandPalette from "@/components/AppCommandPalette";
 
-// The Compile Room (Operate mode) layout — uses 3-column desktop layout with responsive drawer
-// for mobile. Desktop: fixed sidebar | main content. Mobile: drawer overlay.
-// See root DESIGN.md for the visual system this chrome follows.
+// The Compile Room (Operate mode) layout — fixed sidebar from 1024px up, drawer navigation
+// below that (phones and 600–1023px tablets). See root DESIGN.md for the visual system.
 export default function AppLayout({
   children,
 }: Readonly<{
@@ -14,12 +13,12 @@ export default function AppLayout({
 }>) {
   return (
     <div className="flex min-h-full relative bg-background">
-      {/* Desktop Sidebar (hidden on mobile) */}
-      <div className="hidden md:block fixed left-0 top-0 h-screen w-64 z-40">
+      {/* Full sidebar (hidden below 1024px) */}
+      <div className="hidden lg:block fixed left-0 top-0 h-screen w-64 z-40">
         <Sidebar isOpen={true} />
       </div>
 
-      {/* Mobile Drawer Navigation */}
+      {/* Drawer navigation (below 1024px) */}
       <DrawerNav
         authStatus={
           <Suspense fallback={<div className="h-8 w-24 bg-muted rounded animate-pulse" />}>
@@ -31,7 +30,7 @@ export default function AppLayout({
       {/* Main Content Area */}
       <main
         id="main-content"
-        className="flex-1 md:ml-64 p-2 md:p-4 flex flex-col"
+        className="flex-1 lg:ml-64 p-2 md:p-4 flex flex-col"
         role="main"
       >
         {children}

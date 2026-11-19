@@ -163,7 +163,7 @@ describe("tạo tài liệu theo template", () => {
     expect(doc.template).toBe("cv");
     expect(doc.docType).toBe("article");
     expect(doc.latex).toContain("\\documentclass{article}");
-    expect(doc.latex).toContain("\\section*{");
+    expect(doc.latex).toContain("\\cvsection{");
     expect(doc.latex).not.toContain("moderncv");
     expect(doc.latex).not.toContain("\\includegraphics");
     expect(doc.pdfBase64 && doc.pdfBase64.length).toBeGreaterThan(0);

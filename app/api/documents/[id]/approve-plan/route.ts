@@ -41,7 +41,10 @@ export async function POST(
       message: "Đã duyệt dàn ý, chuyển sang trạng thái GENERATING",
       nextStatus: "GENERATING",
     });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Lỗi máy chủ." },
+      { status: 500 }
+    );
   }
 }

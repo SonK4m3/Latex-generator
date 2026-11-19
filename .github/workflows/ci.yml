@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, codex/cloud-preview-20261119]
   pull_request:
 
 permissions:
@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
       - name: Install deps
         run: npm ci
@@ -37,7 +37,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
       - name: Install deps
         run: npm ci || npm install
       - name: Test (ca cần Tectonic sẽ tự skip nếu thiếu binary)
@@ -62,3 +62,11 @@ jobs:
           context: ./compile-service
           push: false
           tags: ai-latex-generator/compile-service:ci
+
+      - name: Build MCP worker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile.mcp-worker
+          push: false
+          tags: ai-latex-generator/mcp-worker:ci

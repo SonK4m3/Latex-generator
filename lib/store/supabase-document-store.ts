@@ -21,6 +21,7 @@ import type {
   TemplateId,
   UpdateDocumentPatch,
   InputFormat,
+  WorkspaceDocument,
 } from "@/lib/types/document";
 
 const TABLE = "documents";
@@ -43,9 +44,24 @@ interface DocumentRow {
   source_markdown: string | null;
   files: ProjectFile[] | null;
   root_file: string | null;
+  has_pdf?: boolean | null;
+  source_revision?: string | null;
+  pdf_source_revision?: string | null;
   created_at: string;
   updated_at: string;
 }
+
+/** Hàng workspace: giống DocumentRow nhưng không có bytes PDF, có has_pdf (cột generated sẵn). */
+interface WorkspaceRow extends Omit<DocumentRow, "pdf_base64" | "has_pdf"> {
+  has_pdf: boolean;
+}
+
+/** Cột cho workspace — loại tường minh pdf_base64 để không kéo bytes PDF nặng. */
+const WORKSPACE_COLUMNS =
+  "id,owner_id,title,doc_type,template,description,latex,log,error,attempts,messages,input_format,source_markdown,files,root_file,created_at,updated_at,has_pdf,source_revision,pdf_source_revision";
+/** Fallback khi DB chưa chạy migration revision (source_revision/pdf_source_revision chưa có). */
+const WORKSPACE_COLUMNS_BASE =
+  "id,owner_id,title,doc_type,template,description,latex,log,error,attempts,messages,input_format,source_markdown,files,root_file,created_at,updated_at,has_pdf";
 
 /** Cột nhẹ cho danh sách (không kéo latex/pdf nặng). */
 interface DocumentSummaryRow {
@@ -56,11 +72,17 @@ interface DocumentSummaryRow {
   attempts: number;
   has_pdf: boolean;
   is_project: boolean;
+  /** Cột generated có từ migration 0011; thiếu ở DB trước migration. */
+  pdf_revision_status?: "missing" | "unknown" | "current" | "stale" | null;
   created_at: string;
   updated_at: string;
 }
 
+const PDF_REVISION_STATUS_COLUMN = "pdf_revision_status";
 const SUMMARY_COLUMNS =
+  "id,title,doc_type,template,attempts,has_pdf,is_project,pdf_revision_status,created_at,updated_at";
+/** Fallback khi DB chưa có cột generated `pdf_revision_status` (migration 0011 chưa chạy). */
+const SUMMARY_COLUMNS_BASE =
   "id,title,doc_type,template,attempts,has_pdf,is_project,created_at,updated_at";
 
 async function sb() {
@@ -87,11 +109,56 @@ function rowToDoc(row: DocumentRow): StoredDocument {
     sourceMarkdown: row.source_markdown ?? undefined,
     files: row.files ?? undefined,
     rootFile: row.root_file ?? undefined,
+    hasPdf: row.has_pdf ?? Boolean(row.pdf_base64),
+    sourceRevision: row.source_revision ?? undefined,
+    pdfSourceRevision: row.pdf_source_revision ?? undefined,
   };
 }
 
-function summaryRowToSummary(row: DocumentSummaryRow): DocumentSummary {
+/** Map hàng workspace → contract workspace (không có pdfBase64). */
+function workspaceRowToDoc(row: WorkspaceRow): WorkspaceDocument {
   return {
+    id: row.id,
+    ownerId: row.owner_id ?? undefined,
+    title: row.title,
+    docType: row.doc_type,
+    template: row.template,
+    description: row.description,
+    latex: row.latex,
+    log: row.log ?? undefined,
+    error: row.error ?? undefined,
+    attempts: row.attempts,
+    messages: row.messages ?? [],
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    inputFormat: row.input_format ?? undefined,
+    sourceMarkdown: row.source_markdown ?? undefined,
+    files: row.files ?? undefined,
+    rootFile: row.root_file ?? undefined,
+    hasPdf: row.has_pdf,
+    sourceRevision: row.source_revision ?? undefined,
+    pdfSourceRevision: row.pdf_source_revision ?? undefined,
+  };
+}
+
+/**
+ * DB chưa migrate revision → PostgREST báo thiếu cột (42703) hoặc schema cache (PGRST204).
+ * Chỉ fallback cho lỗi thiếu cột; nếu message nêu tên cột thì kiểm tra đúng cột được hỏi.
+ */
+function isMissingRevisionColumn(
+  error: { code?: string; message?: string } | null,
+  columns: readonly string[] = ["source_revision", "pdf_source_revision"],
+): boolean {
+  if (!error) return false;
+  const message = (error.message ?? "").toLowerCase();
+  if (columns.some((column) => message.includes(column.toLowerCase()))) {
+    return true;
+  }
+  return error.code === "42703" || error.code === "PGRST204";
+}
+
+function summaryRowToSummary(row: DocumentSummaryRow): DocumentSummary {
+  const summary: DocumentSummary = {
     id: row.id,
     title: row.title,
     docType: row.doc_type,
@@ -102,6 +169,11 @@ function summaryRowToSummary(row: DocumentSummaryRow): DocumentSummary {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+  // Giữ nguyên shape cũ khi DB chưa có cột: không thêm key với giá trị rỗng.
+  if (row.pdf_revision_status) {
+    summary.pdfRevisionStatus = row.pdf_revision_status;
+  }
+  return summary;
 }
 
 export async function createDocument(
@@ -149,6 +221,40 @@ export async function getDocument(
   return rowToDoc(data as DocumentRow);
 }
 
+/**
+ * Đọc tài liệu cho workspace, KHÔNG kéo `pdf_base64`.
+ * - Projection tường minh + `has_pdf` (cột generated có từ 0001).
+ * - DB chưa có source_revision/pdf_source_revision → fallback projection không revision.
+ * - Luôn lọc owner_id (phòng thủ kép ngoài RLS).
+ */
+export async function getWorkspaceDocument(
+  id: string,
+  ownerId: string,
+): Promise<WorkspaceDocument | null> {
+  if (!isValidId(id)) return null;
+  if (!ownerId) return null;
+  const supabase = await sb();
+
+  const query = supabase
+    .from(TABLE)
+    .select(WORKSPACE_COLUMNS)
+    .eq("id", id)
+    .eq("owner_id", ownerId);
+  const { data, error } = await query.maybeSingle();
+
+  if (error && isMissingRevisionColumn(error)) {
+    const fallback = await supabase
+      .from(TABLE)
+      .select(WORKSPACE_COLUMNS_BASE)
+      .eq("id", id)
+      .eq("owner_id", ownerId)
+      .maybeSingle();
+    return fallback.error || !fallback.data ? null : workspaceRowToDoc(fallback.data as WorkspaceRow);
+  }
+  if (error || !data) return null;
+  return workspaceRowToDoc(data as unknown as WorkspaceRow);
+}
+
 export async function listDocuments(
   ownerId?: string,
 ): Promise<DocumentSummary[]> {
@@ -158,6 +264,19 @@ export async function listDocuments(
   const { data, error } = await query.order("updated_at", {
     ascending: false,
   });
+
+  // Chỉ fallback khi thiếu đúng cột generated `pdf_revision_status`; lỗi khác giữ hành vi cũ.
+  if (error && isMissingRevisionColumn(error, [PDF_REVISION_STATUS_COLUMN])) {
+    let fallback = supabase.from(TABLE).select(SUMMARY_COLUMNS_BASE);
+    if (ownerId !== undefined) fallback = fallback.eq("owner_id", ownerId);
+    const fallbackResult = await fallback.order("updated_at", {
+      ascending: false,
+    });
+    if (fallbackResult.error || !fallbackResult.data) return [];
+    return (fallbackResult.data as unknown as DocumentSummaryRow[]).map(
+      summaryRowToSummary,
+    );
+  }
   if (error || !data) return [];
   return (data as unknown as DocumentSummaryRow[]).map(summaryRowToSummary);
 }
@@ -181,6 +300,7 @@ export async function updateDocument(
   id: string,
   patch: UpdateDocumentPatch,
   ownerId?: string,
+  expectedUpdatedAt?: string,
 ): Promise<StoredDocument | null> {
   if (!isValidId(id)) return null;
   const supabase = await sb();
@@ -191,6 +311,9 @@ export async function updateDocument(
   }
   let query = supabase.from(TABLE).update(row).eq("id", id);
   if (ownerId !== undefined) query = query.eq("owner_id", ownerId);
+  if (expectedUpdatedAt !== undefined) {
+    query = query.eq("updated_at", expectedUpdatedAt);
+  }
   const { data, error } = await query.select("*").maybeSingle();
   if (error || !data) return null;
   return rowToDoc(data as DocumentRow);

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useSyncExternalStore } from "react"
 import { ChevronLeft, ChevronRight, Moon, Sun } from "lucide-react"
 import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
@@ -12,14 +12,14 @@ interface SidebarProps {
   isOpen?: boolean
 }
 
+const subscribeToMount = () => () => {}
+const getClientMounted = () => true
+const getServerMounted = () => false
+
 export function Sidebar({ isOpen: initialOpen = true }: SidebarProps) {
   const [isOpen, setIsOpen] = useState(initialOpen)
   const { theme, setTheme } = useTheme()
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
+  const mounted = useSyncExternalStore(subscribeToMount, getClientMounted, getServerMounted)
 
   return (
     <div

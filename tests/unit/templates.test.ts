@@ -166,7 +166,7 @@ describe("template registry", () => {
     expect(TEMPLATES.cv.documentClass).toBe("article");
     const latex = renderTemplateLatex("cv", "x");
     expect(latex).toContain("\\documentclass{article}");
-    expect(latex).toContain("\\section*{");
+    expect(latex).toContain("\\cvsection{");
     // Self-laid-out: no title macro, no moderncv, no external image.
     expect(latex).not.toContain("\\maketitle");
     expect(latex).not.toContain("moderncv");
