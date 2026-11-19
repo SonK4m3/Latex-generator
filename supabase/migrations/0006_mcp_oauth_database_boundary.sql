@@ -32,7 +32,7 @@ grant select on table public.mcp_oauth_audience_policy to supabase_auth_admin;
 -- Supabase Auth invokes this function only after it is explicitly selected as the Custom Access
 -- Token Hook. Unknown clients and non-OAuth sessions retain their original claims and therefore
 -- cannot pass the MCP resource audience check.
-create or replace function public.custom_access_token_hook(event jsonb)
+create or replace function public.latex_mcp_access_token_hook(event jsonb)
 returns jsonb
 language plpgsql
 stable
@@ -64,10 +64,10 @@ begin
 end;
 $$;
 
-revoke all on function public.custom_access_token_hook(jsonb)
+revoke all on function public.latex_mcp_access_token_hook(jsonb)
   from public, anon, authenticated, service_role;
-revoke all on function public.custom_access_token_hook(jsonb) from supabase_auth_admin;
-grant execute on function public.custom_access_token_hook(jsonb) to supabase_auth_admin;
+revoke all on function public.latex_mcp_access_token_hook(jsonb) from supabase_auth_admin;
+grant execute on function public.latex_mcp_access_token_hook(jsonb) to supabase_auth_admin;
 
 -- Existing permissive owner policies continue to serve cookie sessions. These restrictive
 -- policies additionally require the JWT to be a non-OAuth session for any direct table mutation.

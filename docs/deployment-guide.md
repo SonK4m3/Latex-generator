@@ -92,13 +92,13 @@ its row.
    ```
 
 4. In Supabase Dashboard, open **Authentication → Hooks → Custom Access Token** and select
-   `public.custom_access_token_hook`. For a local Supabase stack, configure the same hook in
+   `public.latex_mcp_access_token_hook`. For a local Supabase stack, configure the same hook in
    `supabase/config.toml`:
 
    ```toml
    [auth.hook.custom_access_token]
    enabled = true
-   uri = "pg-functions://postgres/public/custom_access_token_hook"
+   uri = "pg-functions://postgres/public/latex_mcp_access_token_hook"
    ```
 
 5. Ensure the Supabase Auth hook role can execute the function and read its locked configuration;
