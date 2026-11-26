@@ -1,0 +1,78 @@
+.pdf-text-selection-layer {
+  --total-scale-factor: 1;
+  --scale-round-x: 1px;
+  --scale-round-y: 1px;
+  --min-font-size: 1;
+  --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
+  --min-font-size-inv: calc(1 / var(--min-font-size));
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: clip;
+  margin: 0;
+  border: 0;
+  padding: 0;
+  color-scheme: only light;
+  line-height: 1;
+  direction: ltr;
+  letter-spacing: normal;
+  word-spacing: normal;
+  text-align: initial;
+  text-size-adjust: none;
+  -webkit-text-size-adjust: none;
+  forced-color-adjust: none;
+  transform-origin: 0 0;
+  caret-color: CanvasText;
+  user-select: text;
+  -webkit-user-select: text;
+}
+.pdf-text-selection-layer:empty {
+  pointer-events: none;
+}
+.pdf-text-selection-layer:focus-visible {
+  outline: 2px solid Highlight;
+  outline-offset: 2px;
+}
+.pdf-text-selection-layer :is(span, br) {
+  position: absolute;
+  color: transparent;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0% 0%;
+  user-select: text;
+  -webkit-user-select: text;
+}
+.pdf-text-selection-layer > :not(.markedContent),
+.pdf-text-selection-layer .markedContent span:not(.markedContent) {
+  z-index: 1;
+  --font-height: 0;
+  font-size: calc(var(--text-scale-factor) * var(--font-height));
+  --scale-x: 1;
+  --rotate: 0deg;
+  transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv));
+}
+.pdf-text-selection-layer .markedContent {
+  display: contents;
+}
+.pdf-text-selection-layer ::selection {
+  background: rgb(37 99 235 / 0.3);
+  color: transparent;
+}
+.pdf-text-selection-layer ::-moz-selection {
+  background: rgb(37 99 235 / 0.3);
+  color: transparent;
+}
+.pdf-text-selection-layer mark[data-pdf-highlight] {
+  color: transparent;
+  background-color: rgb(250 204 21 / 0.5);
+  border-radius: 2px;
+}
+.pdf-text-selection-layer[data-main-rotation="90"] {
+  transform: rotate(90deg) translateY(-100%);
+}
+.pdf-text-selection-layer[data-main-rotation="180"] {
+  transform: rotate(180deg) translate(-100%, -100%);
+}
+.pdf-text-selection-layer[data-main-rotation="270"] {
+  transform: rotate(270deg) translateX(-100%);
+}

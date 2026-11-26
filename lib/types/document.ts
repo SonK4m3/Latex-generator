@@ -185,6 +185,14 @@ export interface StoredDocument {
   status?: DocumentStatus; // Trạng thái vòng đời của tài liệu
   planContent?: string; // Bản nháp dàn ý để user duyệt
 
+  // ---- Workspace/PDF revisions (tuỳ chọn, rollout-safe) ----
+  /** Revision của `latex` tại lần lưu gần nhất (nếu backend lưu được). */
+  sourceRevision?: string;
+  /** Revision nguồn mà PDF đang lưu được biên dịch từ đó (nếu backend lưu được). */
+  pdfSourceRevision?: string;
+  /** Có PDF hay không — dùng khi response workspace không kèm bytes `pdfBase64`. */
+  hasPdf?: boolean;
+
   // ---- Multi-file project (E1) ----
   // Nếu `files` có mặt ⇒ tài liệu là DỰ ÁN nhiều file (text). `rootFile` là file gốc để compile
   // (mặc định "main.tex"). Quy ước: `latex` giữ nội dung file gốc để tương thích các luồng single-file
@@ -192,6 +200,14 @@ export interface StoredDocument {
   files?: ProjectFile[];
   rootFile?: string;
 }
+
+/**
+ * Tài liệu trả cho workspace: KHÔNG chứa bytes PDF (`pdfBase64`).
+ * Client lấy PDF qua GET /api/documents/:id/pdf và dùng `hasPdf` để biết có sẵn hay không.
+ */
+export type WorkspaceDocument = Omit<StoredDocument, "pdfBase64"> & {
+  hasPdf: boolean;
+};
 
 /** Dữ liệu tạo mới tài liệu (id/timestamps/messages sinh tự động). */
 export type CreateDocumentInput = Omit<
@@ -230,6 +246,11 @@ export interface DocumentSummary {
   /** true nếu tài liệu là dự án multi-file (E1a) — có `files[]` không rỗng. */
   isProject: boolean;
   status?: DocumentStatus;
+  /**
+   * Trạng thái preview PDF do cột generated `pdf_revision_status` sinh ra.
+   * Thiếu field này khi backend chưa có revision (file backend / DB trước migration).
+   */
+  pdfRevisionStatus?: "missing" | "unknown" | "current" | "stale";
 }
 
 // ---- Compile ----

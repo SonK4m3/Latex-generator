@@ -56,6 +56,13 @@ services:
       - OCR_ENABLED=${OCR_ENABLED:-true}
       - OCR_LANGS=${OCR_LANGS:-vie+eng}
       - TESSERACT_CACHE_DIR=/var/cache/tesseract
+      # MCP is opt-in. MCP_RESOURCE_URL has no default: it is required only when
+      # MCP_ENABLED=true. This image runs NODE_ENV=production, so an enabled app must use
+      # the canonical public HTTPS URL ending in /api/mcp (loopback HTTP is dev-server only).
+      - MCP_ENABLED=${MCP_ENABLED:-false}
+      - MCP_RESOURCE_URL=${MCP_RESOURCE_URL:-}
+      - MCP_ALLOWED_CLIENT_IDS=${MCP_ALLOWED_CLIENT_IDS:-}
+      - MCP_ALLOWED_ORIGINS=${MCP_ALLOWED_ORIGINS:-http://localhost:3001}
     volumes:
       # Lưu trữ tài liệu (CRUD + chat-edit) + cache model OCR (bền vững qua restart).
       - documents-data:/data
@@ -73,6 +80,33 @@ services:
     depends_on:
       compile-service:
         condition: service_healthy
+
+  # Optional worker. Chỉ chạy khi bật profile "mcp" (mặc định tắt); không mở port và
+  # không có HTTP health endpoint — kiểm tra bằng container running + log "mcp.worker.started".
+  mcp-worker:
+    profiles: ["mcp"]
+    build:
+      context: .
+      dockerfile: Dockerfile.mcp-worker
+    restart: unless-stopped
+    stop_grace_period: 30s
+    environment:
+      - STORE_BACKEND=supabase
+      - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+      - MCP_WORKER_SERVICE_ROLE_KEY=${MCP_WORKER_SERVICE_ROLE_KEY:-}
+      - MCP_PREVIEW_WORKER_ENABLED=${MCP_PREVIEW_WORKER_ENABLED:-false}
+      - COMPILE_SERVICE_URL=http://compile-service:8080
+      - REQUEST_TIMEOUT_MS=${REQUEST_TIMEOUT_MS:-60000}
+    depends_on:
+      compile-service:
+        condition: service_healthy
+    read_only: true
+    tmpfs: ["/tmp"]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    mem_limit: 512m
+    cpus: 0.5
+    pids_limit: 64
 
   compile-service:
     build: ./compile-service

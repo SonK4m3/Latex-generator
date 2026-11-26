@@ -2,6 +2,14 @@
 
 Bảng theo dõi tiến độ các tính năng của dự án AI LaTeX Generator.
 
+### Chọn đoạn từ PDF cho ChatGPT
+
+Trong editor, mở **PDF → Chọn đoạn cho GPT**, bấm hoặc kéo chọn chữ, đối chiếu phần nguồn được tô sáng rồi chọn **Sao chép cho GPT**. Dán JSON vào chat và yêu cầu sửa bằng MCP. Nếu câu xuất hiện nhiều lần, chọn đúng file và dòng trước khi sao chép. Context gắn với revision và dùng lại thao tác sửa vùng chọn hiện có.
+
+Viewer đối chiếu văn bản PDF với nội dung file `.tex`, cho phép khác khoảng trắng và xuống dòng. Công thức, chữ sinh từ macro hoặc chữ ngắt bằng dấu gạch nối có thể cần chọn trực tiếp trong tab LaTeX. Để chọn từ PDF, cần lưu bản nháp và có PDF khớp revision nguồn.
+
+Ví dụ, sau khi dán context, yêu cầu “Viết lại đoạn đã chọn cho ngắn hơn, giữ nguyên các đoạn khác”. Plugin dùng `edit_document_selection`. Nếu có người sửa tài liệu sau khi sao chép, hãy chọn lại đoạn để lấy context mới. Khi PDF vẫn báo cũ do preview worker tắt hoặc hết quota, dùng nút **Biên dịch** trong editor để xem bản mới.
+
 ## 🟢 Phase 1: MVP (Đã hoàn thành)
 
 | Trạng thái | Tính năng | Mô tả chi tiết |
@@ -34,6 +42,7 @@ Bảng theo dõi tiến độ các tính năng của dự án AI LaTeX Generator
 | Trạng thái | Tính năng | Mô tả chi tiết |
 | :---: | :--- | :--- |
 | 🔄 | **Authentication & Database (v2)** | Supabase Auth + Postgres/RLS document CRUD đã có. **Safe scope 2026-08-05:** Next 16 `proxy.ts` refresh session/redirect UI, email/password + Google OAuth entry, password-reset page, callback chặn open redirect; migration `0004` định nghĩa profile, personal workspace, RLS và RPC quota atomic 10 lượt generation/ngày. API chỉ enforce quota khi `STORE_BACKEND=supabase`; file-store/offline không đổi. **Chưa apply/verify trên Supabase thật.** Backlog: dashboard account/quota, migration rehearsal file→Postgres, project ownership/sharing và realtime. |
+| 🔄 | **ChatGPT/Codex MCP plugin** | Local Streamable HTTP MCP, one-bundle Supabase OAuth consent, active-consent database guards, compile jobs/artifacts, single-file CAS + realtime, project text patches with binary preservation, and template format validation are implemented and locally checked. **Pending:** staging HTTPS endpoint, ChatGPT OAuth connection and full editor/realtime acceptance. See [`MCP integration plan`](../plans/20261116-mcp-plugin-integration/plan.md). |
 | 🔲 | **Advanced deployment strategies** | Triển khai trên môi trường Cloud, Dockerization, thiết lập CI/CD pipeline. |
 
 ---

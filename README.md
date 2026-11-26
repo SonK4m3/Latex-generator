@@ -52,6 +52,11 @@ RAG, Markdown→LaTeX, OCR, đa ngôn ngữ hạng nhất, chỉnh sửa đa fil
 v1/v2 — xem `docs/project-roadmap.md`.
 
 ## Kế hoạch phát hành
+
+MCP local hỗ trợ compile/lưu PDF và cập nhật source tài liệu hiện có (single-file hoặc patch text file trong project) qua một consent OAuth bundle. Kết nối plugin ChatGPT qua HTTPS staging và full realtime acceptance còn pending. Xem [cấu hình local](./docs/deployment-guide.md) và [gói plugin](./plugins/ai-latex/README.md).
+
+For local MCP client testing, `npm run mcp:dev-credentials` provisions a dedicated test account and a development-only API-key alias. It does not replace OAuth for hosted clients.
+
 Xem [`docs/feature-tracking.md`](./docs/feature-tracking.md) — chia phase để đưa lên staging → production.
 
 ## License

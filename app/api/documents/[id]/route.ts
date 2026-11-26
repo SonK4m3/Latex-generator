@@ -10,6 +10,7 @@ import { validateProject, getRootContent } from "@/lib/store/project-document";
 import {
   deleteDocument,
   getDocument,
+  getWorkspaceDocument,
   updateDocument,
 } from "@/lib/store/documentStore";
 import type { ProjectFile, UpdateDocumentPatch } from "@/lib/types/document";
@@ -20,12 +21,26 @@ export const dynamic = "force-dynamic";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-export async function GET(_request: Request, ctx: Ctx): Promise<Response> {
+export async function GET(request: Request, ctx: Ctx): Promise<Response> {
   const { id } = await ctx.params;
   const userId = await getCurrentUserId();
   if (!userId) {
     return Response.json({ error: "Chưa đăng nhập" }, { status: 401 });
   }
+
+  // ?view=workspace: bản nhẹ, không kèm bytes PDF (client tải qua /api/documents/:id/pdf).
+  // Không có query ⇒ giữ nguyên response đầy đủ của GET legacy.
+  if (new URL(request.url).searchParams.get("view") === "workspace") {
+    const doc = await getWorkspaceDocument(id, userId);
+    if (!doc) {
+      return Response.json({ error: "Không tìm thấy tài liệu" }, { status: 404 });
+    }
+    return Response.json(doc, {
+      status: 200,
+      headers: { "Cache-Control": "private, no-store, max-age=0" },
+    });
+  }
+
   const doc = await getDocument(id, userId);
   if (!doc) {
     return Response.json({ error: "Không tìm thấy tài liệu" }, { status: 404 });
@@ -94,13 +109,17 @@ export async function PATCH(request: Request, ctx: Ctx): Promise<Response> {
     return Response.json({ error: "JSON không hợp lệ" }, { status: 400 });
   }
 
-  const { title, latex, files, rootFile, compile } = (body ?? {}) as {
+  const { title, latex, files, rootFile, compile, expectedUpdatedAt } = (body ?? {}) as {
     title?: unknown;
     latex?: unknown;
     files?: unknown;
     rootFile?: unknown;
     compile?: unknown;
+    expectedUpdatedAt?: unknown;
   };
+  if (expectedUpdatedAt !== undefined && typeof expectedUpdatedAt !== "string") {
+    return Response.json({ error: "expectedUpdatedAt phải là chuỗi." }, { status: 400 });
+  }
   // compile !== false ⇒ giữ hành vi cũ (validate + compile). compile === false ⇒ CHỈ persist nội
   // dung (auto-save nháp, FE-2.4): bỏ qua validate + compile, GIỮ NGUYÊN pdfBase64/log/error và
   // KHÔNG đổi attempts (draft-save không phải một lần biên dịch). Vẫn chặn latex rỗng / path xấu.
@@ -251,8 +270,24 @@ export async function PATCH(request: Request, ctx: Ctx): Promise<Response> {
     return Response.json({ error: "Không có trường nào để cập nhật" }, { status: 400 });
   }
 
-  const updated = await updateDocument(id, patch, userId);
+  // Keep the last readable PDF on a failed compile. The database revision still marks it stale
+  // when the source changed. Protect older callers from publishing after a concurrent write.
+  if (existing.sourceRevision && patch.error && patch.pdfBase64 === undefined) {
+    delete patch.pdfBase64;
+  }
+  const writeRevision = expectedUpdatedAt ?? (!skipCompile && ("latex" in patch || "files" in patch) ? existing.updatedAt : undefined);
+  const updated = await updateDocument(id, patch, userId, writeRevision);
   if (!updated) {
+    if (writeRevision !== undefined) {
+      const current = await getDocument(id, userId);
+      if (!current || current.updatedAt !== writeRevision) {
+        return Response.json(
+          { error: "Tài liệu đã được cập nhật trên máy chủ. Hãy tải lại hoặc giữ bản nháp của bạn.", document: current },
+          { status: 409 },
+        );
+      }
+      return Response.json({ error: "Không thể lưu tài liệu." }, { status: 500 });
+    }
     return Response.json({ error: "Không tìm thấy tài liệu" }, { status: 404 });
   }
   return Response.json(updated, { status: 200 });
